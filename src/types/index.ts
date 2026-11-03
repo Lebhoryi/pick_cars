@@ -223,6 +223,10 @@ export interface Vehicle {
   keyCandidate: boolean
   accent: string
   coverImage?: string
+  /** 21:9 宽幅版本，给对比页表头/横幅用，不切车头 */
+  coverWide?: string
+  /** 封面图的出处标注，例如「官方图 · 长安深蓝」 */
+  imageCredit?: string
   followedAt: string
   reason: string
   notes: string
@@ -265,6 +269,96 @@ export interface PriceQuote {
   sourceLabel: string
   conditions: string
   note: string
+  createdAt: string
+}
+
+// ── 销量 ─────────────────────────────────────────────────────────────
+// 逐月记录，单位「辆」。统计窗口 = max(上市月, 2026-01) → 最新已公布月。
+export const SALES_SCOPES = ['零售', '交付', '批发', '待核实'] as const
+export type SalesScope = (typeof SALES_SCOPES)[number]
+
+export interface SalesRecord {
+  id: ID
+  vehicleId: ID
+  /** YYYY-MM */
+  month: string
+  /** 当月销量；null 表示该月已确认无数据/未公布 */
+  units: number | null
+  scope: SalesScope
+  status: Verification
+  sourceUrl: string
+  sourceLabel: string
+  note: string
+  createdAt: string
+}
+
+export interface SalesMonthPoint {
+  month: string
+  units: number | null
+  scope: SalesScope | null
+  status: Verification | null
+  note: string
+}
+
+export interface SalesSummary {
+  /** 窗口起始月：max(上市月, 2026-01) */
+  windowStart: string
+  /** 窗口结束月：全库最新已公布月份 */
+  windowEnd: string
+  launchMonth: string | null
+  /** 窗口内应统计的所有月份，升序 */
+  months: string[]
+  /** 已录入数值的月份数 */
+  recordedMonths: number
+  /** 已建记录（含待核实占位）的月份数 */
+  trackedMonths: number
+  expectedMonths: number
+  /** recordedMonths / expectedMonths */
+  coverage: number
+  /** 已录月份之和；一个月都没录时为 null */
+  cumulative: number | null
+  /** cumulative / recordedMonths */
+  monthlyAvg: number | null
+  latest: { month: string; units: number } | null
+  series: SalesMonthPoint[]
+  hasData: boolean
+}
+
+// ── 车评 ─────────────────────────────────────────────────────────────
+// 只收录固定账号（超哥超车、蔚车情报局局长）对某款车的公开评价，
+// 保留结论、要点、原话与视频链接，便于回看和复核。
+export const REVIEW_CHANNELS = ['超哥超车', '蔚车情报局局长'] as const
+export type ReviewChannel = (typeof REVIEW_CHANNELS)[number]
+
+export const REVIEW_CHANNEL_META: Record<ReviewChannel, { short: string; note: string }> = {
+  超哥超车: { short: '超哥', note: 'B站 169.7 万粉，选车咨询向；结论直接，核心口径是「普通人别乱花钱」' },
+  蔚车情报局局长: {
+    short: '局长',
+    note: 'B站账号「蔚车情报局」7.3 万粉，出镜自称局长；超主观评车 + 版型排雷 + 供应链视角',
+  },
+}
+
+export const REVIEW_STANCES = ['推荐', '谨慎推荐', '中立', '劝退', '未表态'] as const
+export type ReviewStance = (typeof REVIEW_STANCES)[number]
+
+export interface ReviewRecord {
+  id: ID
+  vehicleId: ID
+  channel: ReviewChannel
+  /** 视频标题 */
+  title: string
+  url: string
+  /** YYYY-MM-DD */
+  publishedAt: string
+  stance: ReviewStance
+  /** 一句话结论 */
+  summary: string
+  /** 关键要点（提炼，不是原话） */
+  points: string[]
+  /** 原话摘录（可用于回看核对） */
+  quotes: string[]
+  note: string
+  status: Verification
   createdAt: string
 }
 
@@ -326,10 +420,45 @@ export interface ScoringState {
   snapshots: RankSnapshot[]
 }
 
+// ── 试驾实测 ──────────────────────────────────────────────────────────
+// 一张表 = 一台车在一次同路段试驾里的 5 项打分（0–5，0.5 步进）+ 单项备注。
+export const TEST_DRIVE_CRITERIA = [
+  { id: 'nvh', label: '高速噪声 80–120km/h', hint: '风噪/胎噪/电机啸叫；同一路段、同一车速区间对比' },
+  { id: 'bodyRoll', label: '高速变道侧倾与支撑', hint: '80–120km/h 变道，车身回正速度、悬架支撑' },
+  { id: 'bump', label: '减速带前后排震动', hint: '20km/h 过减速带，前后排跳动与余震' },
+  { id: 'rearSeat', label: '后排久坐舒适度', hint: '后排坐 30 分钟以上：靠背角度、坐垫长度、腿托' },
+  { id: 'adas', label: '智驾实测表现', hint: '高速领航、变道、匝道、加塞处理，按实际开通版本测' },
+] as const
+
+export type TestDriveCriterionId = (typeof TEST_DRIVE_CRITERIA)[number]['id']
+
+export interface TestDriveScore {
+  /** 0–5，null 表示还没测 */
+  score: number | null
+  note: string
+}
+
+export interface TestDriveRecord {
+  id: ID
+  vehicleId: ID
+  /** YYYY-MM-DD */
+  date: string
+  /** 试驾路线/路段说明 */
+  route: string
+  scores: Record<TestDriveCriterionId, TestDriveScore>
+  /** 一句话结论 */
+  summary: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface AppData {
   version: number
   vehicles: Vehicle[]
   quotes: PriceQuote[]
+  sales: SalesRecord[]
+  reviews: ReviewRecord[]
+  testDrives: TestDriveRecord[]
   settings: AppSettings
   scoring: ScoringState
   compareIds: ID[]

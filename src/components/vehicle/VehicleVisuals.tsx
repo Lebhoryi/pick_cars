@@ -108,11 +108,16 @@ export function VehicleCover({
   vehicle,
   className,
   compact = false,
+  variant = 'card',
 }: {
   vehicle: Vehicle
   className?: string
   compact?: boolean
+  /** wide = 21:9 横向图，用于对比页表头/横幅，不切车头 */
+  variant?: 'card' | 'wide'
 }) {
+  const image = variant === 'wide' ? vehicle.coverWide || vehicle.coverImage : vehicle.coverImage
+  const showChips = variant === 'card'
   const gradientId = useId().replace(/:/g, '')
   const isSedan = vehicle.bodyType === '轿车' || vehicle.bodyType === '轿跑SUV'
   const bodyPath = isSedan
@@ -145,9 +150,9 @@ export function VehicleCover({
         className="absolute -right-12 -top-16 size-48 rounded-full blur-3xl"
         style={{ background: `${vehicle.accent}22` }}
       />
-      {vehicle.coverImage ? (
+      {image ? (
         <img
-          src={vehicle.coverImage}
+          src={image}
           alt={`${vehicle.brand} ${vehicle.model}`}
           className="absolute inset-0 size-full object-cover"
           loading="lazy"
@@ -185,7 +190,7 @@ export function VehicleCover({
         </svg>
       )}
 
-      {!vehicle.coverImage ? (
+      {!image && showChips ? (
         <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -215,17 +220,28 @@ export function VehicleCover({
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink-950/70 via-transparent to-transparent" />
       )}
 
-      {vehicle.coverImage ? (
-        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3">
-          <span className="rounded-md border border-white/15 bg-black/35 px-1.5 py-0.5 text-[9px] font-medium text-mist-200 backdrop-blur">
-            {vehicle.year}
-          </span>
-          {vehicle.keyCandidate ? (
-            <span className="inline-flex items-center gap-1 rounded-full border border-accent/35 bg-ink-950/60 px-2 py-0.5 text-[9.5px] font-medium text-accent backdrop-blur">
-              <Star className="size-2.5 fill-current" /> 重点候选
-            </span>
+      {image && showChips ? (
+        <>
+          <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3">
+            {compact ? null : (
+              <span className="rounded-md border border-white/15 bg-black/35 px-1.5 py-0.5 text-[9px] font-medium text-mist-200 backdrop-blur">
+                {vehicle.year}
+              </span>
+            )}
+            {vehicle.keyCandidate && !compact ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-accent/35 bg-ink-950/60 px-2 py-0.5 text-[9.5px] font-medium text-accent backdrop-blur">
+                <Star className="size-2.5 fill-current" /> 重点候选
+              </span>
+            ) : null}
+          </div>
+          {vehicle.imageCredit && !compact ? (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-end p-2">
+              <span className="rounded border border-white/10 bg-black/40 px-1.5 py-0.5 text-[8.5px] text-white/55 backdrop-blur">
+                {vehicle.imageCredit}
+              </span>
+            </div>
           ) : null}
-        </div>
+        </>
       ) : null}
     </div>
   )

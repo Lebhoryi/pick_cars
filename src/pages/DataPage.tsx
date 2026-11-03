@@ -22,13 +22,13 @@ import {
   storageUsage,
   type ValidationResult,
 } from '@/lib/storage'
-import { vehiclesCsv, downloadText } from '@/lib/csv'
+import { reviewsCsv, salesCsv, testDrivesCsv, vehiclesCsv, downloadText } from '@/lib/csv'
 import { dataCompleteness } from '@/lib/analytics'
 import { Badge, Button, PageHeader, SectionTitle } from '@/components/ui/primitives'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 
 export function DataPage() {
-  const { data, priceMap, scoresResult, dispatch, saveStatus, toast } = useApp()
+  const { data, priceMap, scoresResult, salesMap, dispatch, saveStatus, toast } = useApp()
   const fileRef = useRef<HTMLInputElement>(null)
   const [pending, setPending] = useState<(ValidationResult & { fileName: string }) | null>(null)
   const [importOpen, setImportOpen] = useState(false)
@@ -43,15 +43,45 @@ export function DataPage() {
   const quoteCount = data.quotes.length
   const progress = Math.min(100, (usage / (5 * 1024 * 1024)) * 100)
 
+  const exportReviewsCsv = () => {
+    if (data.reviews.length === 0) {
+      toast('还没有车评记录可导出。', 'warning')
+      return
+    }
+    const content = reviewsCsv(data.vehicles, data.reviews)
+    downloadText(`carfleet-reviews-${new Date().toISOString().slice(0, 10)}.csv`, content, 'text/csv;charset=utf-8')
+    toast('车评记录已导出 CSV', 'success')
+  }
+
+  const exportTestDriveCsv = () => {
+    if (data.testDrives.length === 0) {
+      toast('还没有试驾记录可导出。', 'warning')
+      return
+    }
+    const content = testDrivesCsv(data.vehicles, data.testDrives)
+    downloadText(`carfleet-testdrive-${new Date().toISOString().slice(0, 10)}.csv`, content, 'text/csv;charset=utf-8')
+    toast('试驾记录已导出 CSV', 'success')
+  }
+
   const exportJson = () => {
     downloadText(`carfleet-backup-${new Date().toISOString().slice(0, 10)}.json`, serializeData(data), 'application/json')
     toast('完整数据已导出 JSON', 'success')
   }
 
   const exportCsv = () => {
-    const content = vehiclesCsv(data.vehicles, data.quotes, priceMap, scoresResult.scores)
+    const content = vehiclesCsv(data.vehicles, data.quotes, priceMap, scoresResult.scores, salesMap, data.reviews)
     downloadText(`carfleet-vehicles-${new Date().toISOString().slice(0, 10)}.csv`, content, 'text/csv;charset=utf-8')
     toast('车型数据已导出 CSV', 'success')
+  }
+
+  const exportSalesCsv = () => {
+    if (data.sales.length === 0) {
+      toast('还没有销量记录可导出。', 'warning')
+      return
+    }
+    const content = salesCsv(data.vehicles, data.sales)
+    downloadText(`carfleet-sales-${new Date().toISOString().slice(0, 10)}.csv`, content, 'text/csv;charset=utf-8')
+    toast('销量记录已导出 CSV', 'success')
   }
 
   const handleFile = async (file: File | undefined) => {
@@ -98,6 +128,15 @@ export function DataPage() {
             <Button variant="secondary" icon={FileSpreadsheet} onClick={exportCsv}>
               导出车型 CSV
             </Button>
+            <Button variant="secondary" icon={FileSpreadsheet} onClick={exportSalesCsv}>
+              导出销量 CSV
+            </Button>
+            <Button variant="secondary" icon={FileSpreadsheet} onClick={exportReviewsCsv}>
+              导出车评 CSV
+            </Button>
+            <Button variant="secondary" icon={FileSpreadsheet} onClick={exportTestDriveCsv}>
+              导出试驾 CSV
+            </Button>
             <Button variant="primary" icon={Download} onClick={exportJson}>
               导出完整 JSON
             </Button>
@@ -105,10 +144,13 @@ export function DataPage() {
         }
       />
 
-      <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-7">
         {[
           { label: '车型', value: data.vehicles.length, sub: '含重点候选 ' + data.vehicles.filter((v) => v.keyCandidate).length, icon: Database },
           { label: '报价记录', value: quoteCount, sub: '跨车型时间点', icon: FileJson },
+          { label: '销量记录', value: data.sales.length, sub: '按车型×月份', icon: FileJson },
+          { label: '车评', value: data.reviews.length, sub: '两个账号 × 车型', icon: FileJson },
+          { label: '试驾表', value: data.testDrives.length, sub: '5 项打分 / 车', icon: FileJson },
           { label: '来源链接', value: sourceCount, sub: `官方字段 ${officialCount} 项`, icon: CheckCircle2 },
           { label: '本地占用', value: formatBytes(usage), sub: `约 ${progress.toFixed(0)}% / 5 MB 估算上限`, icon: HardDrive },
         ].map((item) => (

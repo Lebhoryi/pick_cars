@@ -28,7 +28,7 @@ import { Segmented } from '@/components/ui/Field'
 import { VehicleCard } from '@/components/vehicle/VehicleCard'
 import { VehicleTable } from '@/components/vehicle/VehicleTable'
 import { VehicleFormModal } from '@/components/vehicle/VehicleFormModal'
-import { ScoreBarChart, ScoreRadarChart, ChartFrame } from '@/components/charts/Charts'
+import { ScoreBarChart, ScoreRadarChart, SalesBarChart, ChartFrame } from '@/components/charts/Charts'
 import { ScoreRing } from '@/components/vehicle/VehicleVisuals'
 
 type ViewMode = 'cards' | 'table'
@@ -60,7 +60,7 @@ function KpiCard({
 }
 
 export function OverviewPage() {
-  const { data, priceMap, scoresResult, dispatch, toast } = useApp()
+  const { data, priceMap, scoresResult, salesMap, dispatch, toast } = useApp()
   const navigate = useNavigate()
   const [view, setView] = useState<ViewMode>('cards')
   const [sort, setSort] = useState<SortKey>('score')
@@ -451,6 +451,18 @@ export function OverviewPage() {
           </div>
         </section>
       </div>
+
+      <ChartFrame
+        title="2026 销量对比"
+        description="窗口 = 上市月与 2026-01 中较晚者 → 最新已公布月份。柱尾百分比是数据覆盖度，缺数据的月份不按 0 计。"
+        action={<Badge tone="amber">口径混用 · 只看量级</Badge>}
+      >
+        <SalesBarChart
+          vehicles={vehicles}
+          salesMap={salesMap}
+          onSelect={(id) => navigate(`/garage/${id}?tab=sales`)}
+        />
+      </ChartFrame>
 
       {/* VEHICLE LIST */}
       <section>

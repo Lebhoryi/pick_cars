@@ -1,4 +1,5 @@
-import type { PriceQuote, Vehicle, VehiclePriceInfo } from '@/types'
+import type { PriceQuote, ReviewRecord, SalesRecord, SalesSummary, TestDriveRecord, Vehicle, VehiclePriceInfo } from '@/types'
+import { TEST_DRIVE_CRITERIA } from '@/types'
 import type { ScoreResult } from '@/types'
 import { quotesForVehicle } from '@/lib/price'
 import { vehicleName } from '@/lib/analytics'
@@ -31,6 +32,8 @@ export function vehiclesCsv(
   quotes: PriceQuote[],
   priceMap: Record<string, VehiclePriceInfo>,
   scores: Record<string, ScoreResult>,
+  salesMap?: Record<string, SalesSummary>,
+  reviews: ReviewRecord[] = [],
 ): string {
   const headers = [
     '品牌',
@@ -55,6 +58,11 @@ export function vehiclesCsv(
     '城市NOA',
     '综合评分',
     '数据覆盖率',
+    '累计销量(辆)',
+    '月均销量(辆)',
+    '销量窗口',
+    '销量数据覆盖',
+    '车评条数',
     '报价条数',
     '关注原因',
     '个人备注',
@@ -65,6 +73,7 @@ export function vehiclesCsv(
     const info = priceMap[vehicle.id]
     const quote = info?.quote
     const score = scores[vehicle.id]
+    const sales = salesMap?.[vehicle.id]
     return [
       vehicle.brand,
       vehicle.model,
@@ -90,6 +99,11 @@ export function vehiclesCsv(
       vehicle.specs.adas.cityNoa,
       score?.total ?? '',
       score ? `${(score.coverage * 100).toFixed(0)}%` : '',
+      sales?.cumulative ?? '',
+      sales?.monthlyAvg ?? '',
+      sales ? `${sales.windowStart} ~ ${sales.windowEnd}` : '',
+      sales ? `${sales.recordedMonths}/${sales.expectedMonths}` : '',
+      reviews.filter((review) => review.vehicleId === vehicle.id).length,
       quotesForVehicle(quotes, vehicle.id).length,
       vehicle.reason,
       vehicle.notes,
@@ -104,6 +118,92 @@ export function compareCsv(vehicles: Vehicle[], rows: Array<{ group: string; lab
   const header = ['对比维度', '参数', ...vehicles.map((v) => `${vehicleName(v)} ${v.trim}`)]
   const body = rows.map((row) => [row.group, row.label, ...row.values])
   return toCsv([header, ...body])
+}
+
+export function salesCsv(vehicles: Vehicle[], records: SalesRecord[]): string {
+  const byId = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]))
+  const rows = records
+    .slice()
+    .sort((a, b) => {
+      const aName = byId.get(a.vehicleId)
+      const bName = byId.get(b.vehicleId)
+      return (
+        vehicleName(aName ?? vehicles[0] ?? ({ brand: '', model: '' } as Vehicle)).localeCompare(
+          vehicleName(bName ?? vehicles[0] ?? ({ brand: '', model: '' } as Vehicle)),
+        ) || a.month.localeCompare(b.month)
+      )
+    })
+    .map((record) => {
+      const vehicle = byId.get(record.vehicleId)
+      return [
+        vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.trim}`.trim() : record.vehicleId,
+        record.month,
+        record.units ?? '',
+        record.scope,
+        record.status,
+        record.sourceLabel,
+        record.sourceUrl,
+        record.note,
+      ]
+    })
+  return toCsv([
+    ['车型', '月份', '销量(辆)', '统计口径', '可信度', '来源标注', '来源链接', '备注'],
+    ...rows,
+  ])
+}
+
+export function reviewsCsv(vehicles: Vehicle[], reviews: ReviewRecord[]): string {
+  const byId = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]))
+  const rows = reviews
+    .slice()
+    .sort((a, b) => {
+      const an = byId.get(a.vehicleId)
+      const bn = byId.get(b.vehicleId)
+      return (
+        (an ? `${an.brand} ${an.model}` : a.vehicleId).localeCompare(bn ? `${bn.brand} ${bn.model}` : b.vehicleId) ||
+        a.channel.localeCompare(b.channel) ||
+        b.publishedAt.localeCompare(a.publishedAt)
+      )
+    })
+    .map((review) => {
+      const vehicle = byId.get(review.vehicleId)
+      return [
+        vehicle ? `${vehicle.brand} ${vehicle.model}`.trim() : review.vehicleId,
+        review.channel,
+        review.stance,
+        review.title,
+        review.summary,
+        review.points.join(' / '),
+        review.quotes.join(' / '),
+        review.publishedAt,
+        review.url,
+        review.note,
+        review.status,
+      ]
+    })
+  return toCsv([
+    ['车型', '账号', '结论', '标题', '一句话结论', '要点', '原话', '发布日期', '链接', '备注', '可信度'],
+    ...rows,
+  ])
+}
+
+export function testDrivesCsv(vehicles: Vehicle[], drives: TestDriveRecord[]): string {
+  const byId = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]))
+  const headers = ['车型', '试驾日期', '路段', ...TEST_DRIVE_CRITERIA.map((c) => `${c.label}(0-5)`), '备注', '一句话结论']
+  const rows = drives.map((drive) => {
+    const vehicle = byId.get(drive.vehicleId)
+    const scores = TEST_DRIVE_CRITERIA.map((c) => drive.scores[c.id]?.score ?? '')
+    const notes = TEST_DRIVE_CRITERIA.map((c) => drive.scores[c.id]?.note).filter(Boolean).join(' / ')
+    return [
+      vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.trim}`.trim() : drive.vehicleId,
+      drive.date,
+      drive.route,
+      ...scores,
+      notes,
+      drive.summary,
+    ]
+  })
+  return toCsv([headers, ...rows])
 }
 
 export function costCsv(

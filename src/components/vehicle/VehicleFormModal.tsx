@@ -131,7 +131,7 @@ export function VehicleFormModal({
     setUploading(true)
     try {
       const image = await compressImage(file)
-      update({ coverImage: image.dataUrl })
+      update({ coverImage: image.dataUrl, imageCredit: '个人上传' })
       toast(`封面已压缩：${formatBytes(image.originalBytes)} → ${formatBytes(image.bytes)}`, 'success')
     } catch (err) {
       toast(err instanceof Error ? err.message : '封面处理失败', 'error')
@@ -302,7 +302,7 @@ export function VehicleFormModal({
                     {uploading ? '处理中…' : '上传封面'}
                   </Button>
                   {draft.coverImage ? (
-                    <Button size="sm" variant="ghost" icon={Trash2} onClick={() => update({ coverImage: undefined })}>
+                    <Button size="sm" variant="ghost" icon={Trash2} onClick={() => update({ coverImage: undefined, imageCredit: '' })}>
                       移除
                     </Button>
                   ) : null}

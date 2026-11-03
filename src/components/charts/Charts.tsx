@@ -17,13 +17,14 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import type { AppSettings, CostResult, PriceQuote, ScoreResult, Vehicle } from '@/types'
+import type { AppSettings, CostResult, PriceQuote, SalesSummary, ScoreResult, Vehicle } from '@/types'
 import { SCORE_DIMS } from '@/types'
 import { formatDate, formatWan, isNum } from '@/lib/format'
+import { formatUnitsCompact } from '@/lib/sales'
 import { computeBreakdown } from '@/lib/price'
 import { vehicleName } from '@/lib/analytics'
 
-const AXIS = { fill: '#64788f', fontSize: 10 }
+const AXIS = { fill: 'var(--t-chart-axis)', fontSize: 10 }
 
 function ChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
@@ -102,7 +103,7 @@ export function ScoreBarChart({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} layout="vertical" margin={{ top: 4, right: 42, bottom: 4, left: 4 }}>
-        <CartesianGrid horizontal={false} stroke="rgba(99,120,145,.16)" strokeDasharray="3 3" />
+        <CartesianGrid horizontal={false} stroke="var(--t-chart-grid)" strokeDasharray="3 3" />
         <XAxis type="number" domain={[0, 10]} hide />
         <YAxis
           type="category"
@@ -112,7 +113,7 @@ export function ScoreBarChart({
           tickLine={false}
           tick={{ ...AXIS, fontSize: 11 }}
         />
-        <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,.03)' }} />
+        <Tooltip content={<ChartTooltip />} cursor={{ fill: 'var(--t-row-hover)' }} />
         <Bar
           dataKey="score"
           name="综合评分"
@@ -128,7 +129,7 @@ export function ScoreBarChart({
             dataKey="score"
             position="right"
             formatter={(value: any) => Number(value).toFixed(2)}
-            style={{ fill: '#b3c3d6', fontSize: 10, fontVariantNumeric: 'tabular-nums' }}
+            style={{ fill: 'var(--t-chart-label)', fontSize: 10, fontVariantNumeric: 'tabular-nums' }}
           />
         </Bar>
       </BarChart>
@@ -165,8 +166,8 @@ export function ScoreRadarChart({
     <>
       <ResponsiveContainer width="100%" height={286}>
         <RadarChart data={data} outerRadius="70%">
-          <PolarGrid stroke="rgba(99,120,145,.25)" />
-          <PolarAngleAxis dataKey="dim" tick={{ fill: '#8b9fb8', fontSize: 10.5 }} />
+          <PolarGrid stroke="var(--t-chart-grid)" />
+          <PolarAngleAxis dataKey="dim" tick={{ fill: 'var(--t-chart-axis)', fontSize: 10.5 }} />
           {eligible.map((vehicle) => (
             <Radar
               key={vehicle.id}
@@ -178,7 +179,7 @@ export function ScoreRadarChart({
               fillOpacity={0.1}
             />
           ))}
-          <Legend wrapperStyle={{ fontSize: 10, color: '#8b9fb8' }} iconType="circle" iconSize={6} />
+          <Legend wrapperStyle={{ fontSize: 10, color: 'var(--t-chart-axis)' }} iconType="circle" iconSize={6} />
           <Tooltip content={<ChartTooltip />} />
         </RadarChart>
       </ResponsiveContainer>
@@ -234,7 +235,7 @@ export function PriceTrendChart({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={{ top: 10, right: 16, bottom: 0, left: -10 }}>
-        <CartesianGrid stroke="rgba(99,120,145,.15)" strokeDasharray="3 3" />
+        <CartesianGrid stroke="var(--t-chart-grid)" strokeDasharray="3 3" />
         <XAxis dataKey="date" tick={AXIS} axisLine={false} tickLine={false} />
         <YAxis
           tick={AXIS}
@@ -266,7 +267,7 @@ export function PriceTrendChart({
           }}
         />
         <Legend
-          wrapperStyle={{ fontSize: 10, color: '#8b9fb8' }}
+          wrapperStyle={{ fontSize: 10, color: 'var(--t-chart-axis)' }}
           iconType="circle"
           iconSize={6}
           formatter={(value) => {
@@ -315,7 +316,7 @@ export function CostCurveChart({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={{ top: 10, right: 16, bottom: 0, left: -6 }}>
-        <CartesianGrid stroke="rgba(99,120,145,.15)" strokeDasharray="3 3" />
+        <CartesianGrid stroke="var(--t-chart-grid)" strokeDasharray="3 3" />
         <XAxis dataKey="year" tick={AXIS} axisLine={false} tickLine={false} />
         <YAxis
           tick={AXIS}
@@ -346,7 +347,7 @@ export function CostCurveChart({
           }}
         />
         <Legend
-          wrapperStyle={{ fontSize: 10, color: '#8b9fb8' }}
+          wrapperStyle={{ fontSize: 10, color: 'var(--t-chart-axis)' }}
           iconType="circle"
           iconSize={6}
           formatter={(value) => {
@@ -367,6 +368,117 @@ export function CostCurveChart({
           />
         ))}
       </LineChart>
+    </ResponsiveContainer>
+  )
+}
+
+function SalesTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null
+  const row = payload[0]?.payload
+  if (!row) return null
+  return (
+    <div className="rounded-xl border border-line-strong bg-ink-850/98 px-3 py-2.5 shadow-2xl backdrop-blur-xl">
+      <div className="mb-1.5 text-[10px] uppercase tracking-wider text-mist-500">{row.name}</div>
+      <div className="space-y-1 text-[11px]">
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-mist-400">累计销量</span>
+          <span className="num font-medium text-mist-100">
+            {isNum(row.cumulative) ? `${row.cumulative.toLocaleString('zh-CN')} 辆` : '待核实'}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-mist-400">数据覆盖</span>
+          <span className="num text-mist-300">
+            {row.recorded}/{row.expected} 月
+          </span>
+        </div>
+        {row.latest ? (
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-mist-400">最新月</span>
+            <span className="num text-mist-300">
+              {row.latest.month} · {row.latest.units.toLocaleString('zh-CN')} 辆
+            </span>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+export function SalesBarChart({
+  vehicles,
+  salesMap,
+  onSelect,
+  height = 240,
+}: {
+  vehicles: Vehicle[]
+  salesMap: Record<string, SalesSummary>
+  onSelect?: (id: string) => void
+  height?: number
+}) {
+  const data = vehicles
+    .map((vehicle) => {
+      const summary = salesMap[vehicle.id]
+      const cumulative = summary?.cumulative ?? null
+      const coverage = summary?.coverage ?? 0
+      return {
+        id: vehicle.id,
+        name: `${vehicle.brand} ${vehicle.model}`,
+        cumulative,
+        coverage,
+        recorded: summary?.recordedMonths ?? 0,
+        expected: summary?.expectedMonths ?? 0,
+        latest: summary?.latest ?? null,
+        label: cumulative === null ? '待核实' : `${formatUnitsCompact(cumulative)} · ${Math.round(coverage * 100)}%`,
+        color: vehicle.accent,
+      }
+    })
+    .filter((row) => row.cumulative !== null)
+    .sort((a, b) => (b.cumulative ?? 0) - (a.cumulative ?? 0))
+
+  if (data.length === 0) {
+    return (
+      <div className="flex h-[200px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong/70 text-center">
+        <span className="text-xs text-mist-400">还没有销量数据</span>
+        <span className="max-w-[300px] text-[10.5px] leading-4 text-mist-500">
+          到车型详情的「销量」页按月份录入，或在数据管理里导入带 sales 的 JSON。缺数据的月份显示待核实，不按 0 计。
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 100, bottom: 4, left: 4 }}>
+        <CartesianGrid horizontal={false} stroke="var(--t-chart-grid)" strokeDasharray="3 3" />
+        <XAxis type="number" hide />
+        <YAxis
+          type="category"
+          dataKey="name"
+          width={118}
+          axisLine={false}
+          tickLine={false}
+          tick={{ ...AXIS, fontSize: 11 }}
+        />
+        <Tooltip content={<SalesTooltip />} cursor={{ fill: 'var(--t-row-hover)' }} />
+        <Bar
+          dataKey="cumulative"
+          name="累计销量"
+          barSize={16}
+          radius={[0, 5, 5, 0]}
+          cursor={onSelect ? 'pointer' : 'default'}
+          onClick={(entry: any) => onSelect?.(entry.id)}
+        >
+          {data.map((item) => (
+            <Cell key={item.id} fill={item.color} fillOpacity={0.85} />
+          ))}
+          <LabelList
+            dataKey="label"
+            position="right"
+            style={{ fill: 'var(--t-chart-label)', fontSize: 10, fontVariantNumeric: 'tabular-nums' }}
+          />
+        </Bar>
+      </BarChart>
     </ResponsiveContainer>
   )
 }

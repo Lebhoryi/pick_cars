@@ -8,13 +8,17 @@ import type {
   CostAssumptions,
   PriceQuote,
   PowertrainSpecs,
+  ReviewRecord,
   SafetySpecs,
+  SalesRecord,
   ScoreDimId,
+  TestDriveRecord,
   ScoringState,
   Vehicle,
   VehicleSpecs,
 } from '@/types'
-import { SCORE_DIMS } from '@/types'
+import { SCORE_DIMS, TEST_DRIVE_CRITERIA } from '@/types'
+import { currentMonth } from '@/lib/sales'
 
 export const APP_VERSION = 1
 export const STORAGE_KEY = 'carfleet.data.v1'
@@ -197,6 +201,8 @@ export function blankVehicle(overrides: Partial<Vehicle> = {}): Vehicle {
     focusStatus: '观察中',
     keyCandidate: false,
     accent: ACCENTS[Math.floor(Math.random() * ACCENTS.length)],
+    coverWide: '',
+    imageCredit: '',
     followedAt: todayISO(),
     reason: '',
     notes: '',
@@ -248,6 +254,59 @@ export function blankQuote(vehicleId: string, overrides: Partial<PriceQuote> = {
   }
 }
 
+export function blankSalesRecord(vehicleId: string, overrides: Partial<SalesRecord> = {}): SalesRecord {
+  const month = currentMonth()
+  return {
+    id: uid('sale'),
+    vehicleId,
+    month,
+    units: null,
+    scope: '待核实',
+    status: '待核实',
+    sourceUrl: '',
+    sourceLabel: '',
+    note: '',
+    createdAt: new Date().toISOString(),
+    ...overrides,
+  }
+}
+
+export function blankReview(vehicleId: string, overrides: Partial<ReviewRecord> = {}): ReviewRecord {
+  return {
+    id: uid('rev'),
+    vehicleId,
+    channel: '超哥超车',
+    title: '',
+    url: '',
+    publishedAt: todayISO(),
+    stance: '未表态',
+    summary: '',
+    points: [],
+    quotes: [],
+    note: '',
+    status: '媒体',
+    createdAt: new Date().toISOString(),
+    ...overrides,
+  }
+}
+
+export function blankTestDrive(vehicleId: string, overrides: Partial<TestDriveRecord> = {}): TestDriveRecord {
+  const now = new Date().toISOString()
+  const scores = {} as TestDriveRecord['scores']
+  for (const criterion of TEST_DRIVE_CRITERIA) scores[criterion.id] = { score: null, note: '' }
+  return {
+    id: uid('drive'),
+    vehicleId,
+    date: todayISO(),
+    route: '',
+    summary: '',
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+    scores: { ...scores, ...(overrides.scores ?? {}) },
+  }
+}
+
 export const defaultCostAssumptions: CostAssumptions = {
   years: 5,
   annualKm: 15000,
@@ -296,6 +355,9 @@ export function defaultData(): import('@/types').AppData {
     version: APP_VERSION,
     vehicles: [],
     quotes: [],
+    sales: [],
+    reviews: [],
+    testDrives: [],
     settings: defaultSettings(),
     scoring: defaultScoring(),
     compareIds: [],

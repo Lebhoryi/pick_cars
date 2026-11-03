@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   CalendarClock,
   Check,
+  Palette,
   ExternalLink,
   Info,
   Percent,
@@ -22,12 +23,14 @@ import { cn, formatDate, formatWan, monthsUntil } from '@/lib/format'
 import { Badge, Button, PageHeader, SectionTitle } from '@/components/ui/primitives'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { Field, MoneyInput, NumberInput, TextInput } from '@/components/ui/Field'
+import { THEMES, applyTheme, loadTheme, saveTheme, type ThemeId } from '@/lib/theme'
 
 export function SettingsPage() {
   const { data, dispatch, toast } = useApp()
   const [draft, setDraft] = useState<AppSettings>(() => structuredClone(data.settings))
   const [confirmReset, setConfirmReset] = useState(false)
   const [error, setError] = useState('')
+  const [theme, setTheme] = useState<ThemeId>(() => loadTheme())
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(data.settings)
   const resolved = resolvePolicy(draft.taxPolicy, draft.targetPurchaseDate)
@@ -177,6 +180,49 @@ export function SettingsPage() {
         </div>
 
         <div className="space-y-5">
+          <section className="panel p-4 sm:p-5">
+            <SectionTitle
+              title="外观"
+              description="六套主题，点击立即生效；选择保存在本机，不影响数据。"
+              action={<Palette className="size-4 text-mist-500" />}
+            />
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {THEMES.map((item) => {
+                const active = item.id === theme
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setTheme(item.id)
+                      applyTheme(item.id)
+                      saveTheme(item.id)
+                    }}
+                    className={cn(
+                      'flex items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition',
+                      active ? 'border-accent/50 bg-accent/10' : 'border-line/70 hover:border-line-strong hover:bg-white/[0.02]',
+                    )}
+                  >
+                    <span
+                      className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-line/80"
+                      style={{ background: item.surface }}
+                    >
+                      <span className="size-2.5 rounded-full" style={{ background: item.accent }} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-[11.5px] font-medium text-mist-200">{item.name}</span>
+                        <span className="text-[9px] text-mist-500">{item.tone}</span>
+                      </span>
+                      <span className="block truncate text-[9.5px] text-mist-500">{item.desc}</span>
+                    </span>
+                    {active ? <Check className="size-3.5 shrink-0 text-accent" /> : null}
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+
           <section className="panel p-4 sm:p-5">
             <SectionTitle
               title="个人偏好模型"

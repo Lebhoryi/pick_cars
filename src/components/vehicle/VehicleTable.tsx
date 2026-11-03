@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowUpRight, Check, Columns2, Pencil } from 'lucide-react'
 import type { FilterResult, ScoreResult, Vehicle, VehiclePriceInfo } from '@/types'
 import { cn, formatWan } from '@/lib/format'
+import { formatUnitsCompact } from '@/lib/sales'
 import { useApp } from '@/store/AppStore'
 import { Badge, IconButton } from '@/components/ui/primitives'
 import { StatusBadge, VehicleCover } from '@/components/vehicle/VehicleVisuals'
@@ -20,7 +21,7 @@ export function VehicleTable({
   onEdit: (vehicle: Vehicle) => void
 }) {
   const navigate = useNavigate()
-  const { data, dispatch, toast } = useApp()
+  const { data, dispatch, toast, salesMap } = useApp()
 
   const toggleCompare = (id: string) => {
     const exists = data.compareIds.includes(id)
@@ -34,7 +35,7 @@ export function VehicleTable({
   return (
     <div className="panel overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="data-table min-w-[980px]">
+        <table className="data-table min-w-[1100px]">
           <thead>
             <tr>
               <th className="table-head sticky left-0 z-10 bg-ink-850 text-left">车型 / 版本</th>
@@ -42,6 +43,7 @@ export function VehicleTable({
               <th className="table-head text-right">指导价</th>
               <th className="table-head text-right">预计落地</th>
               <th className="table-head text-right">CLTC</th>
+              <th className="table-head text-right">2026 销量</th>
               <th className="table-head text-left">智驾方案</th>
               <th className="table-head text-right">综合评分</th>
               <th className="table-head text-right">操作</th>
@@ -93,6 +95,16 @@ export function VehicleTable({
                   </td>
                   <td className="table-cell num text-right text-mist-200">
                     {vehicle.specs.powertrain.cltcRange ? `${vehicle.specs.powertrain.cltcRange} km` : '—'}
+                  </td>
+                  <td className="table-cell text-right">
+                    <div className={cn('num font-semibold', salesMap[vehicle.id]?.hasData ? 'text-mist-100' : 'text-mist-500')}>
+                      {salesMap[vehicle.id]?.hasData ? formatUnitsCompact(salesMap[vehicle.id].cumulative) : '待核实'}
+                    </div>
+                    <div className="text-[9.5px] text-mist-500">
+                      {salesMap[vehicle.id]?.hasData
+                        ? `月均 ${formatUnitsCompact(salesMap[vehicle.id].monthlyAvg)} · ${salesMap[vehicle.id].recordedMonths}/${salesMap[vehicle.id].expectedMonths} 月`
+                        : '未录入'}
+                    </div>
                   </td>
                   <td className="table-cell max-w-[220px]">
                     <div className="truncate text-[11.5px] text-mist-300" title={vehicle.specs.adas.solution}>

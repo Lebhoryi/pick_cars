@@ -1,11 +1,18 @@
 import type {
   AppData,
+  TestDriveRecord,
   PriceQuote,
   Provenance,
+  ReviewChannel,
+  ReviewRecord,
+  ReviewStance,
+  SalesRecord,
+  SalesScope,
   ScoreDimId,
   SourceRef,
   Vehicle,
   VehicleSpecs,
+  Verification,
 } from '@/types'
 import {
   blankAdas,
@@ -22,9 +29,10 @@ import {
   defaultSettings,
   uid,
 } from '@/lib/defaults'
-import { SCORE_DIM_IDS } from '@/types'
+import { SCORE_DIM_IDS, TEST_DRIVE_CRITERIA } from '@/types'
 
 export const CHECK_DATE = '2026-10-28'
+export const SALES_CHECK_DATE = '2026-11-02'
 export const TAX_POLICY_URL = 'https://fgk.chinatax.gov.cn/zcfgk/c102416/c5207352/content.html'
 
 type SpecPartial = { [K in keyof VehicleSpecs]?: Partial<VehicleSpecs[K]> }
@@ -188,10 +196,173 @@ const sources = {
     date: CHECK_DATE,
     publisher: '新浪',
   },
+  pcautoSales: {
+    id: 'src_pcauto_sales',
+    label: '太平洋汽车：新能源车销量排行榜（月度 / 本年累计）',
+    url: 'https://price.pcauto.com.cn/top/evsales/s1-t1.html',
+    kind: 'media',
+    date: SALES_CHECK_DATE,
+    publisher: '太平洋汽车',
+  },
+  gasgooSales: {
+    id: 'src_gasgoo_sales',
+    label: '盖世汽车：车型月度销量库（海狮06 EV / 启源Q06 EV）',
+    url: 'https://m.gasgoo.com/qcxl',
+    kind: 'media',
+    date: SALES_CHECK_DATE,
+    publisher: '盖世汽车',
+  },
+  q06OctSales: {
+    id: 'src_q06_oct_sales',
+    label: '快科技/新浪：长安启源 10 月全球销量 63648 辆，Q06 上市首月破万 10152 辆',
+    url: 'https://finance.sina.com.cn/tech/roll/2026-11-01/doc-inixferx3103966.shtml',
+    kind: 'media',
+    date: '2026-11-01',
+    publisher: '新浪科技',
+  },
+  s07OctSales: {
+    id: 'src_s07_oct_sales',
+    label: 'IT之家：深蓝汽车 10 月全球交付 32602 辆，深蓝S07 交付 6062 辆',
+    url: 'https://www.ithome.com/1/020/707.htm',
+    kind: 'media',
+    date: '2026-11-01',
+    publisher: 'IT之家',
+  },
+  t7SeptSales: {
+    id: 'src_t7_sept_sales',
+    label: '库库AI（乘联会零售）：极狐阿尔法T7 9 月零售 2332 辆，2026 年累计 2338 辆',
+    url: 'https://kuku.baidu.com/landing/tscp_doc/fee4ddccf3a0b36d3c25e2232fa0c254',
+    kind: 'media',
+    date: '2026-10-31',
+    publisher: '库库AI',
+  },
+  t7OctSales: {
+    id: 'src_t7_oct_sales',
+    label: '什么值得买：极狐 10 月销量 26325 台，阿尔法T7 单车型未拆分',
+    url: 'https://post.m.smzdm.com/p/az87lw7p/',
+    kind: 'media',
+    date: '2026-11-01',
+    publisher: '什么值得买',
+  },
+  ttOctSales: {
+    id: 'src_tt_oct_sales',
+    label: '搜狐：吉利汽车 10 月销量破 31 万辆，银河TT 上市 30 天交付超 1 万辆',
+    url: 'https://m.sohu.com/a/1095782732_258768',
+    kind: 'media',
+    date: '2026-11-01',
+    publisher: '搜狐汽车',
+  },
+  c10Official: {
+    id: 'src_c10_official',
+    label: '零跑官网：C10 2026 款预售价格与配置',
+    url: 'https://cn.leapmotor.com/C10-26.html',
+    kind: 'official',
+    date: SALES_CHECK_DATE,
+    publisher: '零跑汽车',
+  },
+  c10Autohome: {
+    id: 'src_c10_autohome',
+    label: '汽车之家：零跑C10 2026款 605激光雷达版 参数配置',
+    url: 'https://car.autohome.com.cn/config/spec/72249.html',
+    kind: 'media',
+    date: SALES_CHECK_DATE,
+    publisher: '汽车之家',
+  },
+  c10Sina: {
+    id: 'src_c10_sina',
+    label: '新浪汽车：零跑C10 12.28 万起配 800V+激光雷达，74.9/81.9kWh、4739mm、2825mm',
+    url: 'https://auto.sina.cn/2026-07-20/detail-iniimeas4863144.d.html',
+    kind: 'media',
+    date: '2026-07-20',
+    publisher: '新浪汽车',
+  },
+  c11Official: {
+    id: 'src_c11_official',
+    label: '零跑官网：C11 参数配置表',
+    url: 'https://cn.leapmotor.com/parameter-pk-web.html?platform=web&carTypeId=3',
+    kind: 'official',
+    date: SALES_CHECK_DATE,
+    publisher: '零跑汽车',
+  },
+  c11Autohome: {
+    id: 'src_c11_autohome',
+    label: '汽车之家：零跑C11 2026款 纯电 640激光雷达智尊版 参数配置',
+    url: 'https://car.autohome.com.cn/config/spec/73150.html',
+    kind: 'media',
+    date: SALES_CHECK_DATE,
+    publisher: '汽车之家',
+  },
+  c11Sina: {
+    id: 'src_c11_sina',
+    label: '新浪：零跑C11 2026 款 14.38 万起，640km / 2930mm / 8650 智驾芯片',
+    url: 'https://www.sina.cn/gc/article/niwuefz9589932.html',
+    kind: 'media',
+    date: '2026-10-28',
+    publisher: '新浪',
+  },
+  t6Launch: {
+    id: 'src_t6_launch',
+    label: '新华网：一汽-大众 ID. AURA T6 正式上市 12.99 万起',
+    url: 'https://www.news.cn/auto/20260922/12a613c1131b49f7aa69e7d679fe9300/c.html',
+    kind: 'media',
+    date: '2026-09-22',
+    publisher: '新华网',
+  },
+  t6Sohu: {
+    id: 'src_t6_sohu',
+    label: '搜狐汽车：大众 ID. AURA T6 车型库（4811/1879/1648、轴距 2836、576L 后备厢）',
+    url: 'https://db.auto.sohu.com/model_7870',
+    kind: 'media',
+    date: SALES_CHECK_DATE,
+    publisher: '搜狐汽车',
+  },
+  t6Yiche: {
+    id: 'src_t6_yiche',
+    label: '易车：ID. AURA T6 参数（77.5kWh、231 马力）',
+    url: 'https://car.m.yiche.com/idaurat6/',
+    kind: 'media',
+    date: SALES_CHECK_DATE,
+    publisher: '易车',
+  },
+  gasgooC10: {
+    id: 'src_gasgoo_c10',
+    label: '盖世汽车：零跑C10 EV 月度销量（2026-09：9492）',
+    url: 'https://m.gasgoo.com/qcxl/cxxl/2026/9/2314',
+    kind: 'media',
+    date: SALES_CHECK_DATE,
+    publisher: '盖世汽车',
+  },
+  gasgooC11: {
+    id: 'src_gasgoo_c11',
+    label: '盖世汽车：零跑C11 月度销量（2026-09：3550）',
+    url: 'https://m.gasgoo.com/qcxl/cxxl/2026/9/1957',
+    kind: 'media',
+    date: SALES_CHECK_DATE,
+    publisher: '盖世汽车',
+  },
+  t6Sales: {
+    id: 'src_t6_sales',
+    label: '库库AI（引太平洋汽车）：ID.AURA T6 2026-10 销量 111 辆，交付尚未铺开',
+    url: 'https://kuku.baidu.com/landing/tscp_doc/f5e0a71c46f6a93d27b28ac207d18f0a',
+    kind: 'media',
+    date: '2026-11-01',
+    publisher: '库库AI',
+  },
+  sohuShoot: {
+    id: 'src_sohu_shoot',
+    label: '搜狐汽车实拍图库（C10 / C11 / ID. AURA T6 车展与店内实拍）',
+    url: 'https://db.auto.sohu.com/model_7870/picture',
+    kind: 'media',
+    date: SALES_CHECK_DATE,
+    publisher: '搜狐汽车',
+  },
 } satisfies Record<string, SourceRef>
 
 const t7 = blankVehicle({
   id: 'v_t7',
+  coverImage: '/cars/v_t7.jpg',
+  coverWide: '/cars/v_t7-wide.jpg',
+  imageCredit: '官方图 · ARCFOX 极狐',
   brand: '极狐',
   model: 'T7',
   year: '2026款',
@@ -331,6 +502,9 @@ const t7 = blankVehicle({
 
 const mg07 = blankVehicle({
   id: 'v_mg07',
+  coverImage: '/cars/v_mg07.jpg',
+  coverWide: '/cars/v_mg07-wide.jpg',
+  imageCredit: '官方图 · 上汽名爵',
   brand: '名爵',
   model: 'MG07',
   year: '2026款',
@@ -350,7 +524,7 @@ const mg07 = blankVehicle({
   tags: ['待确认版本', '价格观察'],
   specs: specs({
     basic: {
-      launchDate: '2026-07（预售）',
+      launchDate: '2026-08',
       saleStatus: '在售',
       seats: 5,
       warranty: '待核实',
@@ -376,7 +550,7 @@ const mg07 = blankVehicle({
     },
   }),
   provenance: {
-    'basic.launchDate': p('媒体', sources.mgSina.id),
+    'basic.launchDate': p('媒体', sources.mgSina.id, { note: '2026-07-29 开启预售，2026-08-21 成都车展正式上市；按上市月 2026-08 记录' }),
     'powertrain.cltcRange': p('官方', sources.mgOfficial.id, { condition: 'CLTC 610km' }),
     'basic.residualRate': p('个人', sources.mgOfficial.id, { note: '个人估算' }),
   },
@@ -386,6 +560,9 @@ const mg07 = blankVehicle({
 
 const tt = blankVehicle({
   id: 'v_tt',
+  coverImage: '/cars/v_tt.jpg',
+  coverWide: '/cars/v_tt-wide.jpg',
+  imageCredit: '官方图 · 吉利银河',
   brand: '吉利银河',
   model: 'TT',
   year: '2026款',
@@ -537,6 +714,9 @@ const tt = blankVehicle({
 
 const s07 = blankVehicle({
   id: 'v_s07',
+  coverImage: '/cars/v_s07.jpg',
+  coverWide: '/cars/v_s07-wide.jpg',
+  imageCredit: '官方图 · 深蓝汽车',
   brand: '深蓝',
   model: 'S07',
   year: '2026款',
@@ -623,6 +803,9 @@ const s07 = blankVehicle({
 
 const q06 = blankVehicle({
   id: 'v_q06',
+  coverImage: '/cars/v_q06.jpg',
+  coverWide: '/cars/v_q06-wide.jpg',
+  imageCredit: '官方图 · 长安启源',
   brand: '长安启源',
   model: 'Q06',
   year: '2027款',
@@ -714,6 +897,9 @@ const q06 = blankVehicle({
 
 const seal = blankVehicle({
   id: 'v_seal06',
+  coverImage: '/cars/v_seal06.jpg',
+  coverWide: '/cars/v_seal06-wide.jpg',
+  imageCredit: '官方图 · 比亚迪',
   brand: '比亚迪',
   model: '海狮 06 EV',
   year: '待确认',
@@ -865,7 +1051,223 @@ const seal = blankVehicle({
   manualScores: manual({ price: 8.0, adas: 8.4, chassis: 8.1, range: 8.0, space: 8.6, cockpit: 8.2, brand: 8.8 }),
 })
 
-const vehicles: Vehicle[] = [t7, mg07, tt, s07, q06, seal]
+// ── 竞品：零跑 C10 / C11、大众 ID. AURA T6 ────────────────────────────
+// 口径：官方指导价与官网配置优先，查不到的字段标「待核实」，不按 0 处理。
+const c10 = blankVehicle({
+  id: 'v_c10',
+  brand: '零跑',
+  model: 'C10',
+  year: '2026款',
+  trim: '605 激光雷达版',
+  bodyType: 'SUV',
+  energyType: '纯电',
+  driveType: '后置后驱（待核实）',
+  focusStatus: '观察中',
+  keyCandidate: false,
+  accent: '#a3e635',
+  coverImage: '/cars/v_c10.jpg',
+  coverWide: '/cars/v_c10-wide.jpg',
+  imageCredit: '实拍图 · 搜狐汽车',
+  followedAt: '2026-11-03',
+  reason: '15 万级「配置参考答案」：800V、主动悬架、零重力座椅、8295 座舱都给了，价格压到最低，用来给其它车定基准。',
+  notes:
+    '2026 款纯电 605 激光雷达版：汽车之家指导价 14.28 万，零跑官网预售页写 14.98 万，两者冲突，按低值记录并标待核实。增程版（210km）另有 12.28–13.98 万区间，本车只记纯电激光雷达版。',
+  pros: ['74.9kWh 磷酸铁锂 + 605km CLTC，800V 高压碳化硅平台', '激光雷达版落在 14 万级，配置密度高于同价位国产 SUV', '车长 4739mm、轴距 2825mm，中型 SUV 空间'],
+  cons: ['高速与开空调时续航达成率一般（车评口径）', '智驾与车机软件体验落后于华为系/新势力', '蓝牙钥匙体验被点名不稳定'],
+  tags: ['配置党', '800V', '待试驾'],
+  specs: specs({
+    basic: {
+      launchDate: '2026-07',
+      saleStatus: '在售',
+      seats: 5,
+      warranty: '待核实',
+      serviceNetwork: '零跑门店（覆盖待核实）',
+      residualRate: 40,
+      platform: '800V 全域高压碳化硅平台（媒体口径）',
+    },
+    powertrain: {
+      batteryKwh: 74.9,
+      batteryBrand: '待核实',
+      batteryType: '磷酸铁锂',
+      cltcRange: 605,
+      highVoltage: '800V',
+      accel0100: 5.9,
+      thermalMgmt: '待核实',
+    },
+    body: { length: 4739, wheelbase: 2825 },
+    adas: {
+      solution: '零跑自研（激光雷达 + 高速 NOA）',
+      supplier: '零跑自研',
+      lidar: 1,
+      lidarSpec: '待核实（线数未公布）',
+      highSpeedNoa: '标配',
+      cityNoa: '待核实',
+      autoPark: '待核实',
+      hardware: '标配',
+      experience: '待试驾',
+    },
+  }),
+  provenance: {
+    'basic.launchDate': p('媒体', sources.c10Sina.id, { note: '2026-07 上市；年款 2026 款' }),
+    'basic.platform': p('媒体', sources.c10Sina.id),
+    'basic.residualRate': p('个人', sources.c10Sina.id, { note: '个人估算' }),
+    'powertrain.batteryKwh': p('媒体', sources.c10Sina.id),
+    'powertrain.batteryType': p('媒体', sources.c10Sina.id),
+    'powertrain.cltcRange': p('媒体', sources.c10Autohome.id),
+    'powertrain.highVoltage': p('媒体', sources.c10Sina.id),
+    'powertrain.accel0100': p('媒体', sources.pcautoSales.id, { note: '媒体口径 5.9s，待实测' }),
+    'body.length': p('媒体', sources.c10Sina.id),
+    'body.wheelbase': p('媒体', sources.c10Sina.id),
+    'adas.lidar': p('媒体', sources.c10Autohome.id),
+  },
+  sources: [sources.c10Official, sources.c10Autohome, sources.c10Sina, sources.sohuShoot],
+  manualScores: manual({ price: 9.0, adas: 7.4, chassis: 7.4, range: 8.0, space: 8.4, cockpit: 8.3, brand: 7.0 }),
+})
+
+const c11 = blankVehicle({
+  id: 'v_c11',
+  brand: '零跑',
+  model: 'C11',
+  year: '2026款',
+  trim: '纯电 640 激光雷达智尊版',
+  bodyType: 'SUV',
+  energyType: '纯电',
+  driveType: '后置后驱（待核实）',
+  focusStatus: '观察中',
+  keyCandidate: false,
+  accent: '#f0abfc',
+  coverImage: '/cars/v_c11.jpg',
+  coverWide: '/cars/v_c11-wide.jpg',
+  imageCredit: '实拍图 · 搜狐汽车',
+  followedAt: '2026-11-03',
+  reason: '比 C10 高半档：用料和配置更足、轴距 2930mm，适合想要更大后排又不想上 20 万的人。',
+  notes:
+    '2026 款纯电 640 激光雷达智尊版指导价 16.58 万；车系 14.38 万起（640 智享版）。轴距 2930mm、车长 4780mm，智驾用 8650 芯片，激光雷达为顶配专属。',
+  pros: ['81.9kWh 电池 + 640km CLTC，比 C10 多 6 度电、多 35km', '轴距 2930mm，后排空间比 C10 大一圈', '激光雷达智尊版配置高半档（座椅、音响、用料）'],
+  cons: ['价格上到 16.58 万，已经和 Q06 Ultra 包、T7 ULTRA 重叠', '销量明显低于 C10（2026-09：3550 vs 9492），保有量偏小', '智驾与车机软件体验同样落后一档'],
+  tags: ['大后排', '激光雷达', '待试驾'],
+  specs: specs({
+    basic: {
+      launchDate: '2026-07',
+      saleStatus: '在售',
+      seats: 5,
+      warranty: '待核实',
+      serviceNetwork: '零跑门店（覆盖待核实）',
+      residualRate: 40,
+      platform: '待核实',
+    },
+    powertrain: {
+      batteryKwh: 81.9,
+      batteryBrand: '待核实',
+      batteryType: '磷酸铁锂',
+      cltcRange: 640,
+      highVoltage: '待核实',
+      thermalMgmt: '待核实',
+    },
+    body: { length: 4780, wheelbase: 2930 },
+    adas: {
+      solution: '零跑自研（激光雷达 + 8650 智驾芯片）',
+      supplier: '零跑自研',
+      lidar: 1,
+      lidarSpec: '待核实（线数未公布）',
+      highSpeedNoa: '标配',
+      cityNoa: '待核实',
+      autoPark: '待核实',
+      hardware: '标配',
+      experience: '待试驾',
+    },
+  }),
+  provenance: {
+    'basic.launchDate': p('媒体', sources.c11Sina.id, { note: '2026 款，上市时间待官方确认' }),
+    'basic.residualRate': p('个人', sources.c11Sina.id, { note: '个人估算' }),
+    'powertrain.batteryKwh': p('媒体', sources.c11Autohome.id),
+    'powertrain.batteryType': p('媒体', sources.c11Autohome.id),
+    'powertrain.cltcRange': p('媒体', sources.c11Autohome.id),
+    'body.length': p('媒体', sources.c11Autohome.id),
+    'body.wheelbase': p('媒体', sources.c11Sina.id),
+    'adas.lidar': p('媒体', sources.c11Autohome.id),
+  },
+  sources: [sources.c11Official, sources.c11Autohome, sources.c11Sina, sources.sohuShoot],
+  manualScores: manual({ price: 8.5, adas: 7.6, chassis: 7.6, range: 8.2, space: 8.6, cockpit: 8.3, brand: 7.0 }),
+})
+
+const idt6 = blankVehicle({
+  id: 'v_idt6',
+  brand: '一汽-大众',
+  model: 'ID. AURA T6',
+  year: '2026款',
+  trim: '660 Max 激光雷达版',
+  bodyType: 'SUV',
+  energyType: '纯电',
+  driveType: '前置（待核实）',
+  focusStatus: '观察中',
+  keyCandidate: false,
+  accent: '#7dd3fc',
+  coverImage: '/cars/v_idt6.jpg',
+  coverWide: '/cars/v_idt6-wide.jpg',
+  imageCredit: '车展实拍 · 搜狐汽车',
+  followedAt: '2026-11-03',
+  reason: '德系底盘与做工的代表：4811mm 车长、2836mm 轴距，400V 平台是明摆着的短板，适合把「开起来」排在第一位的人。',
+  notes:
+    '一汽-大众 ID. AURA 序列首款纯电 SUV，2026-09-22 上市，12.99 万起（540 Pro / 660 Pro 13.99 万 / 660 Max 激光雷达版 14.99 万 / 660 Ultra 16.69 万）。660 Max 是大定热销版本，限时送「云感零压座椅套装 + AURA SOUND 7.1.4 音响」。400V 平台、77.5kWh 磷酸铁锂。',
+  pros: ['德系底盘质感与转向调校，做工流程严谨', '4811/1879/1648mm，轴距 2836mm，后备厢 576L', '660 Max 限时送零压座椅套装与 7.1.4 音响，性价比被拉平'],
+  cons: ['400V 平台，同价位国产普遍 800V/5C', '内饰用料明显分层，前后排小件质感与自家 8/9 系差一档', '智能化与智驾体验落后国产一档；2026-10 交付仅 111 辆，验证期刚开始'],
+  tags: ['德系底盘', '400V', '待试驾'],
+  specs: specs({
+    basic: {
+      launchDate: '2026-09',
+      saleStatus: '在售',
+      seats: 5,
+      warranty: '待核实',
+      serviceNetwork: '一汽-大众 4S 网络（覆盖最广的一档）',
+      residualRate: 45,
+      platform: '400V',
+    },
+    powertrain: {
+      batteryKwh: 77.5,
+      batteryBrand: '待核实',
+      batteryType: '磷酸铁锂',
+      cltcRange: 660,
+      powerKw: 170,
+      highVoltage: '400V',
+      fastChargeTimeMin: 24,
+      fastChargeSoc: '待核实（官方标 0.4h）',
+      thermalMgmt: '待核实',
+    },
+    body: { length: 4811, width: 1879, height: 1648, wheelbase: 2836, trunkL: 576, trunkMaxL: 1796 },
+    adas: {
+      solution: '大众 + 地平线（酷睿程）方案，首款带激光雷达的大众纯电',
+      supplier: '地平线 / 大众',
+      lidar: 1,
+      lidarSpec: '待核实（线数未公布）',
+      highSpeedNoa: '待核实',
+      cityNoa: '待核实',
+      autoPark: '待核实',
+      hardware: '标配（Max 版）',
+      experience: '待试驾',
+    },
+  }),
+  provenance: {
+    'basic.launchDate': p('媒体', sources.t6Launch.id, { note: '2026-09-22 上市' }),
+    'basic.residualRate': p('个人', sources.t6Sohu.id, { note: '个人估算' }),
+    'powertrain.batteryKwh': p('媒体', sources.t6Yiche.id),
+    'powertrain.batteryType': p('媒体', sources.t6Sohu.id),
+    'powertrain.cltcRange': p('媒体', sources.t6Sohu.id, { note: '660 Max 版本 CLTC 660km' }),
+    'powertrain.powerKw': p('媒体', sources.t6Yiche.id, { note: '231 马力折算约 170kW' }),
+    'powertrain.highVoltage': p('媒体', sources.t6Launch.id, { note: '400V 平台，媒体与车评一致' }),
+    'powertrain.fastChargeTimeMin': p('媒体', sources.t6Sohu.id, { condition: '官方标 0.4h，SOC 区间待核实' }),
+    'body.length': p('媒体', sources.t6Sohu.id),
+    'body.width': p('媒体', sources.t6Sohu.id),
+    'body.height': p('媒体', sources.t6Sohu.id),
+    'body.wheelbase': p('媒体', sources.t6Sohu.id),
+    'body.trunkL': p('媒体', sources.t6Sohu.id),
+    'adas.lidar': p('媒体', sources.t6Launch.id),
+  },
+  sources: [sources.t6Launch, sources.t6Sohu, sources.t6Yiche, sources.sohuShoot],
+  manualScores: manual({ price: 8.3, adas: 7.2, chassis: 8.6, range: 7.8, space: 8.2, cockpit: 7.4, brand: 8.6 }),
+})
+
+const vehicles: Vehicle[] = [t7, mg07, tt, s07, q06, seal, c10, c11, idt6]
 
 const quotes: PriceQuote[] = [
   {
@@ -1030,6 +1432,543 @@ const quotes: PriceQuote[] = [
     note: '官方配置器未检到「605 旗舰版」同名校验，年款与版型待确认；价格仅作保守占位，不作已核实数据。',
     createdAt: '2026-10-28T10:25:00+08:00',
   },
+  {
+    id: 'q_c10_20261103',
+    vehicleId: 'v_c10',
+    date: '2026-11-03',
+    label: '指导价（激光雷达版）',
+    guidePrice: 142800,
+    officialPrice: 142800,
+    dealerPrice: null,
+    limitedDiscount: 0,
+    cashDiscount: 0,
+    conditionalDiscount: 0,
+    tradeInSubsidy: 0,
+    optionTotal: 0,
+    adasPack: 0,
+    insurance: 6500,
+    plateFee: 500,
+    otherFee: 0,
+    taxOverride: null,
+    includeConditional: false,
+    includeTradeIn: false,
+    status: '待核实',
+    sourceUrl: sources.c10Autohome.url,
+    sourceLabel: '汽车之家：C10 2026款 605激光雷达版',
+    conditions: '汽车之家指导价 14.28 万；零跑官网预售页写 14.98 万，存在口径冲突。',
+    note: '激光雷达版比 605 悦享版贵 1 万；价格按较低口径记录并标待核实。',
+    createdAt: '2026-11-03T11:00:00+08:00',
+  },
+  {
+    id: 'q_c11_20261103',
+    vehicleId: 'v_c11',
+    date: '2026-11-03',
+    label: '指导价（激光雷达智尊版）',
+    guidePrice: 165800,
+    officialPrice: 165800,
+    dealerPrice: null,
+    limitedDiscount: 0,
+    cashDiscount: 0,
+    conditionalDiscount: 0,
+    tradeInSubsidy: 0,
+    optionTotal: 0,
+    adasPack: 0,
+    insurance: 6800,
+    plateFee: 500,
+    otherFee: 0,
+    taxOverride: null,
+    includeConditional: false,
+    includeTradeIn: false,
+    status: '媒体',
+    sourceUrl: sources.c11Autohome.url,
+    sourceLabel: '汽车之家：C11 2026款 纯电 640激光雷达智尊版',
+    conditions: '车系 14.38 万起（640 智享版），激光雷达智尊版 16.58 万。',
+    note: '激光雷达为顶配专属，中低配没有；不要拿车系入门价套这一版。',
+    createdAt: '2026-11-03T11:05:00+08:00',
+  },
+  {
+    id: 'q_idt6_20261103',
+    vehicleId: 'v_idt6',
+    date: '2026-11-03',
+    label: '指导价（660 Max 激光雷达版）',
+    guidePrice: 149900,
+    officialPrice: 149900,
+    dealerPrice: null,
+    limitedDiscount: 10000,
+    cashDiscount: 0,
+    conditionalDiscount: 0,
+    tradeInSubsidy: 0,
+    optionTotal: 0,
+    adasPack: 0,
+    insurance: 6200,
+    plateFee: 500,
+    otherFee: 0,
+    taxOverride: null,
+    includeConditional: false,
+    includeTradeIn: false,
+    status: '媒体',
+    sourceUrl: sources.t6Launch.url,
+    sourceLabel: '新华网：ID. AURA T6 上市 12.99 万起',
+    conditions: '660 Max 14.99 万；限时送价值 1 万元云感零压座椅套装与 AURA SOUND 7.1.4 音响（按权益记录，未从车价扣除）。',
+    note: '540 Pro 12.99 万 / 660 Pro 13.99 万 / 660 Max 14.99 万 / 660 Ultra 16.69 万。',
+    createdAt: '2026-11-03T11:10:00+08:00',
+  },
+]
+
+// ── 销量 ─────────────────────────────────────────────────────────────
+// 核对基准 2026-11-02（各家 11-01 公布 10 月销量）。
+// 统计窗口 = max(上市月, 2026-01) → 2026-10；单位「辆」。
+// 只有品牌战报能拆分到车型的月份才有数字，其余按月建「待核实」占位，不补 0。
+function sale(
+  id: string,
+  vehicleId: string,
+  month: string,
+  units: number | null,
+  scope: SalesScope,
+  status: Verification,
+  source: SourceRef,
+  note: string,
+): SalesRecord {
+  return {
+    id,
+    vehicleId,
+    month,
+    units,
+    scope,
+    status,
+    sourceUrl: source.url,
+    sourceLabel: source.label,
+    note,
+    createdAt: `${SALES_CHECK_DATE}T10:00:00+08:00`,
+  }
+}
+
+const sales: SalesRecord[] = [
+  // 极狐阿尔法T7：2026-09-16 上市
+  sale('sale_t7_202609', 'v_t7', '2026-09', 2332, '零售', '媒体', sources.t7SeptSales, '乘联会零售口径；9 月 16 日上市，只有半个月。'),
+  sale('sale_t7_202610', 'v_t7', '2026-10', null, '待核实', '待核实', sources.t7OctSales, '官方只给「百城万台交付」活动口径（约 1 万台），未拆分单车型；与品牌环比净增 4807 辆对不上，暂不填数。'),
+
+  // MG 07：2026-08-21 上市
+  sale('sale_mg07_202608', 'v_mg07', '2026-08', null, '待核实', '待核实', sources.pcautoSales, '8 月 21 日上市，当月交付未单独公布。'),
+  sale('sale_mg07_202609', 'v_mg07', '2026-09', 14577, '交付', '媒体', sources.pcautoSales, '上市首个完整交付月；太平洋汽车销量榜与媒体「首月交付 14577 辆」一致。'),
+  sale('sale_mg07_202610', 'v_mg07', '2026-10', null, '待核实', '待核实', sources.pcautoSales, '10 月分车型销量未公布（MG 品牌只公布新能源合计 8.5 万 / 国内 3.1 万）。'),
+
+  // 吉利银河TT：2026-09-10 上市
+  sale('sale_tt_202609', 'v_tt', '2026-09', 6894, '零售', '媒体', sources.pcautoSales, '太平洋汽车 9 月新能源轿车榜；上市 3 周。'),
+  sale('sale_tt_202610', 'v_tt', '2026-10', null, '待核实', '待核实', sources.ttOctSales, '官方称「上市 30 天交付超 1 万辆」，未公布单月精确值。'),
+
+  // 深蓝S07：2026-09-30 上市
+  sale('sale_s07_202609', 'v_s07', '2026-09', null, '待核实', '待核实', sources.s07OctSales, '9 月 30 日上市，当月未形成交付。'),
+  sale('sale_s07_202610', 'v_s07', '2026-10', 6062, '交付', '官方', sources.s07OctSales, '深蓝官方 10 月战报：S07 交付 6062 辆，首个完整交付月。'),
+
+  // 长安启源Q06：2026-09-23 上市
+  sale('sale_q06_202609', 'v_q06', '2026-09', 10399, '批发', '媒体', sources.gasgooSales, '盖世汽车销量库口径（批发）；9 月 23 日上市，含上市前发运。'),
+  sale('sale_q06_202610', 'v_q06', '2026-10', 10152, '批发', '官方', sources.q06OctSales, '长安启源 10 月战报：Q06 上市首月销量 10152 辆。'),
+
+  // 比亚迪海狮06 EV：2025-07 上市，窗口从 2026-01 起算
+  sale('sale_seal06_202601', 'v_seal06', '2026-01', 4314, '批发', '媒体', sources.gasgooSales, '盖世汽车销量库（EV 单列，不含 DM-i）。'),
+  sale('sale_seal06_202602', 'v_seal06', '2026-02', 4800, '批发', '媒体', sources.gasgooSales, '春节月，全年低点。'),
+  sale('sale_seal06_202603', 'v_seal06', '2026-03', 8402, '批发', '媒体', sources.gasgooSales, '2026 款 EV 3 月上市后回量。'),
+  sale('sale_seal06_202604', 'v_seal06', '2026-04', 10400, '批发', '媒体', sources.gasgooSales, ''),
+  sale('sale_seal06_202605', 'v_seal06', '2026-05', 11250, '批发', '媒体', sources.gasgooSales, ''),
+  sale('sale_seal06_202606', 'v_seal06', '2026-06', 11576, '批发', '媒体', sources.gasgooSales, ''),
+  sale('sale_seal06_202607', 'v_seal06', '2026-07', 11398, '批发', '媒体', sources.gasgooSales, ''),
+  sale('sale_seal06_202608', 'v_seal06', '2026-08', 12233, '批发', '媒体', sources.gasgooSales, ''),
+  sale('sale_seal06_202609', 'v_seal06', '2026-09', 12966, '批发', '媒体', sources.gasgooSales, '2026 年 1–9 月累计 87339 辆，与盖世汽车本年累计一致。'),
+  sale('sale_seal06_202610', 'v_seal06', '2026-10', null, '待核实', '待核实', sources.gasgooSales, '10 月分车型销量未公布（比亚迪只公布集团 49 万+ 总量）。'),
+
+  // 零跑 C10 EV：2026-07 上市，窗口 2026-07 → 10
+  sale('sale_c10_202607', 'v_c10', '2026-07', 9269, '批发', '媒体', sources.gasgooC10, '盖世汽车销量库（C10 EV 单列，不含增程）。'),
+  sale('sale_c10_202608', 'v_c10', '2026-08', 9774, '批发', '媒体', sources.gasgooC10, ''),
+  sale('sale_c10_202609', 'v_c10', '2026-09', 9492, '批发', '媒体', sources.gasgooC10, '2026 年 1–9 月累计 88053 辆，与盖世汽车本年累计一致。'),
+  sale('sale_c10_202610', 'v_c10', '2026-10', null, '待核实', '待核实', sources.gasgooC10, '10 月分车型销量未公布（零跑只公布品牌 106127 台）。'),
+
+  // 零跑 C11：窗口 2026-07 → 10
+  sale('sale_c11_202607', 'v_c11', '2026-07', 6244, '批发', '媒体', sources.gasgooC11, '7 月冲量后回落，C11 已被 C10/C16 分流。'),
+  sale('sale_c11_202608', 'v_c11', '2026-08', 3587, '批发', '媒体', sources.gasgooC11, ''),
+  sale('sale_c11_202609', 'v_c11', '2026-09', 3550, '批发', '媒体', sources.gasgooC11, '2026 年 1–9 月累计 38502 辆。'),
+  sale('sale_c11_202610', 'v_c11', '2026-10', null, '待核实', '待核实', sources.gasgooC11, '10 月分车型销量未公布。'),
+
+  // 大众 ID. AURA T6：2026-09-22 上市，窗口 2026-09 → 10
+  sale('sale_idt6_202609', 'v_idt6', '2026-09', null, '待核实', '待核实', sources.t6Sales, '9 月 22 日上市，当月交付未拆分。'),
+  sale('sale_idt6_202610', 'v_idt6', '2026-10', 111, '交付', '媒体', sources.t6Sales, '太平洋汽车口径 111 辆；官方称大定已破 2.7 万台，锁单与交付不同步。'),
+]
+
+
+// ── 车评 ─────────────────────────────────────────────────────────────
+// 只收两个账号：超哥超车（B站 169.7 万粉）、蔚车情报局局长（B站「蔚车情报局」）。
+// 结论/要点来自视频正文（Whisper small 转录后人工整理），原话保留口语原句，同音错字以视频为准。
+function review(
+  id: string,
+  vehicleId: string,
+  channel: ReviewChannel,
+  title: string,
+  url: string,
+  publishedAt: string,
+  stance: ReviewStance,
+  summary: string,
+  points: string[],
+  quotes: string[],
+  note = '',
+): ReviewRecord {
+  return {
+    id,
+    vehicleId,
+    channel,
+    title,
+    url,
+    publishedAt,
+    stance,
+    summary,
+    points,
+    quotes,
+    note,
+    status: '媒体',
+    createdAt: `${SALES_CHECK_DATE}T11:00:00+08:00`,
+  }
+}
+
+const reviews: ReviewRecord[] = [
+  // 极狐阿尔法T7
+  review(
+    'rev_t7_chao_price',
+    'v_t7',
+    '超哥超车',
+    '极狐T7这车怎么样？看完这条视频就明白',
+    'https://www.bilibili.com/video/BV1Q8tC6UE8d',
+    '2026-09-05',
+    '推荐',
+    '他挑的「今年性价比最高的三台新车」之一：5 米车长 / 3 米轴距、227kW、宁德电芯、715km，中高配还给华为舱内激光雷达；但 13 万买不到全套，得 16 万级。',
+    [
+      '排序上第三台（前两台是华为系大六座、MG07），共同点是「用老牌车企的供应链把价格打下来」',
+      'T7 强在普通人一眼能 get 的基本面：宁德时代电芯、5 米车长 3 米轴距、华为舱内激光、小米同款天幕',
+      '低配做不到「宁德 700km + CDC + 21 寸 + 华为」全配，得看中高配，起步 16.4 万左右',
+      '顺带点 MG07 的短板：前驱、钢铝混合底盘里铝合金很少、基本是铁件，主打长续航而非操控',
+    ],
+    ['关键是又是宁德时代的电芯', '5 米车长 3 米轴距，你搞这玩'],
+    '上市前（9/16 上市）的预判视频，价格口径按 16.4 万级中高配。',
+  ),
+  review(
+    'rev_t7_chao_careful',
+    'v_t7',
+    '超哥超车',
+    '极狐阿尔法T7买吗？普通人买车慎重下手！',
+    'https://www.bilibili.com/video/BV1XBY56EEmF',
+    '2026-09-11',
+    '推荐',
+    '16.48 万给到 715km + 800V + 华为 ADS5 Pro，他说「太狠了」；但新能源两三个月一换代，普通人要留预算、别满打满算。',
+    [
+      '同价位配置天花板：17.3 寸 3K 屏、HUD、方向盘加热、前排通风加热按摩、19 扬声器、热泵',
+      '建议看纯电版（85 度 / 715km / 800V），不用看插混',
+      '真正观点是「买电车按买手机心态」：预算留余量，被降价背刺也不心疼',
+      '今年卷价格的是北汽、上汽这类老牌车企的新能源品牌，不是比亚迪和银河',
+    ],
+    ['太狠了，我们只能说太狠了', '买新能源车心态得好，就是买手机心态去买车'],
+    '标题里的「慎重」指向买车时机与预算心态，不是劝退这台车。',
+  ),
+  review(
+    'rev_t7_juzhang_national',
+    'v_t7',
+    '蔚车情报局局长',
+    '国庆档15万级SUV盘点！谁能撼动比亚迪？',
+    'https://www.bilibili.com/video/BV18XHW66E4p',
+    '2026-10-05',
+    '谨慎推荐',
+    '「T5 我是喜欢的，T7 就没有那么喜欢」：宁德电芯、大空间、天幕这些大众认知的基本面做得好，但老 T5 那种扎实用料和工艺在 T7 上变薄了。',
+    [
+      '卖点全是普通用户一眼能 get 的东西：宁德电芯、5+3 大空间、小米同款天幕，方法聪明且高效',
+      '但「一摸就摸得出来」的用料与工艺不如 T5，属于看得见的地方加分、摸得着的地方减分',
+      '要买就买 715 ULTRA，别上华为智驾版——这个价位没必要交华为税',
+      '乘坐体验不如 Q06，但底盘比 Q06 强；一个人开或最多副驾坐人，买它不买 Q06 也合理',
+    ],
+    [
+      'T5 我是喜欢的，T7 就没有那么的喜欢',
+      '老 T5 上那种一摸就摸得出来的扎实用料严谨工艺，在这辆车上我感觉就有点薄了',
+      '这个价位没必要交华为税',
+    ],
+    '国庆档 15 万级 SUV 盘点中的一段，约 3 分钟。同盘点里他给的是「重视底盘/前排体验选 T7，重视后排选 Q06，重视充电与家用均衡选海狮06」。',
+  ),
+
+  // MG07
+  review(
+    'rev_mg07_chao',
+    'v_mg07',
+    '超哥超车',
+    'MG 07买不买？不要为品牌溢价买单！',
+    'https://www.bilibili.com/video/BV16ztv66ExE',
+    '2026-09-04',
+    '谨慎推荐',
+    '14.69 万给 91 度宁德电池、845km，产品本身够打；但不建议为品牌溢价买单，买电车别花太多钱，免得被换代背刺。',
+    [
+      '价格底气来自上汽欧洲出口赚钱反哺国内，不是靠亏本',
+      '同价位他点名的对照：风云A9（11 万内 650km）、启源A06（2.99 米轴距、后排配置高、11.9 万）、深蓝L06（MRC 电子悬架、前双叉臂后五连杆、14 万上下）',
+      '不建议为「品牌溢价」多花钱，新势力谁都可能掉队，控制预算才不怕背刺',
+      '买新能源要关注新上的车型、电池、质保和定价，而不是车标',
+    ],
+    ['不要过分的去关注这个所谓的品牌溢价', '买新能源第一心态要好，谁都是要淘汰的', '讲性价比，不花太多钱，被淘汰被背刺那跟我就无关'],
+  ),
+  review(
+    'rev_mg07_juzhang',
+    'v_mg07',
+    '蔚车情报局局长',
+    '15万B级轿跑盘点！M03难保王座？领克07GT和MG07里你又该选谁？',
+    'https://www.bilibili.com/video/BV1o7Gg69EpY',
+    '2026-08-01',
+    '推荐',
+    '本篇综合 TOP1、没有并列：800V/5C、最大 800km、摩曼塔 R7 软硬一体，三电与辅助驾驶都过关，上汽供应链把价格压住了；前提是过三个月新车考验期。',
+    [
+      '定位讨巧：名爵既不用背领克那种品牌向上，也不用扛银河的销量目标，不必硬降本增效',
+      '吃到星云架构红利，前后备厢 + 大冰柜的空间布局广受好评，外观也讨喜',
+      '唯一要过的关是新车可靠性：三个月内不翻车，它就是本篇第一',
+      '对比参照：领克 07GT 是操控向，但只有四驱带 MRC 的版本成立，且不建议加千里浩瀚 H7',
+    ],
+    ['这车现在要过的关，就是三个月的新车考验期', '它就是综合下来的 TOP1 选手，没有并列玩家'],
+    'MG07 于 8/21 上市，这条是上市前的预判盘点。',
+  ),
+
+  // 吉利银河TT
+  review(
+    'rev_tt_chao',
+    'v_tt',
+    '超哥超车',
+    '银河TT买不买？多对比MG07',
+    'https://www.bilibili.com/video/BV1dxpG6pEg8',
+    '2026-10-11',
+    '推荐',
+    '12.99 万起给 800V、640km、后驱 333 马力、前双叉臂后多连杆 + CDC，主打操控与整体性价比；和 MG07 是两种取向，看你要什么。',
+    [
+      '电池是宁德 CTP，充电速度被吉利这一代 800V 架构拉起来了',
+      '论动力、底盘、操控都能打：前双叉臂后多连杆，底盘刚性有保证',
+      '和 MG07 的分野：MG07 是前驱、钢铝混合底盘基本铁件、主打 845km 长续航；TT 电池没那么大，主打操控和性价比',
+      '两条都不算缺点，属于侧重不同，按自己需求选',
+    ],
+    ['论动力、论底盘、论操控……我觉得 TT 车型可以好好研究一下', '侧重点不一样，看您要的是啥'],
+  ),
+
+  // 深蓝S07
+  review(
+    'rev_s07_juzhang_national',
+    'v_s07',
+    '蔚车情报局局长',
+    '国庆档15万级SUV盘点！谁能撼动比亚迪？',
+    'https://www.bilibili.com/video/BV18XHW66E4p',
+    '2026-10-05',
+    '劝退',
+    '靠脸卖的时代过去了：2026 款和华为分手省下华为税、换 800V + 6C 电驱补了第二大短板，但底盘仍是短板，智驾大概率沿用旧方案；同样预算他更愿意把钱花在 Q06 的智驾上。',
+    [
+      '省掉华为税后换装长安 800V + 6C 电驱架构，补上此前第二大短板（补能与电驱）',
+      '第一大短板是底盘：新款底盘件用料有改动，好坏自己判断；长安系电车操控普遍一般，只有 L06 靠 MRC 有点运动感',
+      '智驾大概率还是旧的双 J6M 方案（「没带就是没写」），不值得当加分项',
+      '66 度小电池版直接不能看；大电池版比 Q06 多 6 度电，但后排舒适性不如 Q06，等于多花 4000 买 25km 续航和一个更好看的车壳',
+    ],
+    [
+      '2026 款选择了和华为分手，省去华为税之后，换装了长安最新的 800V 加 6C 的电驱架构',
+      '因为有 Q06 在前面顶着，66 度的小电池版直接就不能看了',
+      '由这 4000，我宁可你把 Q06 的智驾也选了',
+    ],
+    '国庆档 15 万级 SUV 盘点中的一段，约 5 分钟。同盘点里零跑 C16 被判「不推荐」（五座不如 C11，六座只有刚需纯电才选），大众 ID.T6「有 800V 才值得推荐」。',
+  ),
+
+  // 长安启源Q06
+  review(
+    'rev_q06_juzhang_guide',
+    'v_q06',
+    '蔚车情报局局长',
+    '降完以后成真香？启源Q06上市,车型速通指南一篇清！',
+    'https://www.bilibili.com/video/BV1Fwh968EKh',
+    '2026-09-26',
+    '推荐',
+    '车系结构是「三个 1 万」：14 度电 + 宁德、家庭舒享套装、J6P 智驾；结论是优先看 700 智尊，后排套装必加，智驾他自己会选。',
+    [
+      '同级最夸张的后排：双区座椅通风加热按摩 + 电动侧窗遮阳帘 + 冰箱/电视/小桌板，这个 1 万必加，不加等于放弃最大优点',
+      '电芯 1 万不亏（长安平价卖），但 66→80 度的体验提升没有想象大；小电池有高倍率充电，大多数人够用',
+      'J6P 智驾值得选：硬件卡在甜点区间、SDA 架构硬件已冻结，OTA 期望比过去大，他愿意把这个 1 万排在电芯之前',
+      '后桥双电机是 SDA 架构的技术验证品，没必要帮长安摊研发费',
+    ],
+    [
+      '这个一万块是必须要加的，不加你就等于是放弃了它最大的优点',
+      '是我的话我会选（智驾），我甚至可能把它排在电芯的 1 万块前面',
+      '这枚（后桥）电机只是 SDA 架构下的一个技术验证产品，真没必要帮长安探研发费',
+    ],
+  ),
+  review(
+    'rev_q06_juzhang_national',
+    'v_q06',
+    '蔚车情报局局长',
+    '国庆档15万级SUV盘点！谁能撼动比亚迪？',
+    'https://www.bilibili.com/video/BV18XHW66E4p',
+    '2026-10-05',
+    '推荐',
+    '被评为「后排神车」：后排配置人无我有；短板是底盘调校；智驾建议选（+1 万）。',
+    [
+      '优点集中在后排的「人无我有」，同一个榜单里没有对手',
+      '短板是长安的底盘基因：用料可以，调校一般，后桥电机选装别加',
+      '智驾加 1 万值得选：地平线先做、长安跟着超，结合 HSD 表现认为能做出来',
+      '和极狐 T7 对比：T7 乘坐不如它，但底盘更强',
+    ],
+    ['起源Q06，后排神车', '长安确实没有好底盘的基因，用料是可以的，调校就是一般'],
+    '版本建议：602 智享 / 700 智尊，后桥电机选装别加。同一账号的短评版本，与速通指南结论一致。同盘点还评了海狮06EV、零跑 C10/C11/C16、大众 ID.T6。',
+  ),
+
+  // 比亚迪海狮06 EV
+  review(
+    'rev_seal06_juzhang_suv',
+    'v_seal06',
+    '蔚车情报局局长',
+    '海狮06神中神!元PLUS推沟里?9月15万级纯电SUV盘点!',
+    'https://www.bilibili.com/video/BV1SpYPzfEfZ',
+    '2025-09-09',
+    '推荐',
+    '「06EV 神中神」：买 605 Pro 中配就够，想踏踏实实开 5–8 年图省心就买它；三电同价位 T1，底盘在 06 上已经变成长板。',
+    [
+      '三电（能耗效率、可靠性、续航达成率）是 15 万级 T1，很多车标 3C/4C/5C 但真充起来做不到',
+      '智能化第一梯队：这个价位只有比亚迪算合格，零跑、长安各算半家',
+      '底盘不再是短板而是长板——空悬/调校口碑在 06 这一代翻过来了，主观排前三',
+      '真正有效的竞品只有零跑 C 系列（乘坐体验更好，但零跑有自己的坑）',
+    ],
+    [
+      '还是 06EV 神中神',
+      '买回去想踏踏实实开个 5 年 8 年图省心的，你就去买 06 的中配 605 Pro',
+      '还是 06 的底盘已经不算是短板了，甚至可以说是长板',
+    ],
+    '2025 年 9 月盘点（海狮06 上市两个月），当时他给的版本建议是 605 Pro。',
+  ),
+  review(
+    'rev_seal06_juzhang_oct',
+    'v_seal06',
+    '蔚车情报局局长',
+    '国庆档15万级SUV盘点！谁能撼动比亚迪？',
+    'https://www.bilibili.com/video/BV18XHW66E4p',
+    '2026-10-05',
+    '推荐',
+    '「这车你就买 605 旗舰，不要天神之眼 B」：闪充 + 纯电新架构带来的空间是主要卖点，云辇 C 在 06 这种大车上才明显；短板是高速 NVH、新车气味和舒适配置不够卷。',
+    [
+      '闪充全系都有，加 605 旗舰这种小电池高配最划算；有了闪充，大电池的意义明显下降',
+      '新纯电架构带来更大车内空间，云辇 C 放在 06 这种尺寸上能感受到架构提升',
+      '他明确说：605 旗舰就好，不要加天神之眼 B——这是小电池版才有的高配版型，宋 Ultra 想要 HUD/冰箱只能上 18 万的大电池顶配',
+      '车主集中吐槽两点：高速 NVH 偏吵、内饰环保性一般（新车味道大）',
+      '智能化步子偏慢（AI 上车与软硬件智驾都在预备阶段），舒适配置也没本篇其他车卷，零重力座椅都没有',
+    ],
+    [
+      '买的话我比较推荐还是 06 的 605 旗舰，不要天神之眼 B',
+      '尤其是在有了闪充之后，大电池的意义就没有那么大了',
+      '一个是高速路况下的 NVH 有点吵，另一个就是整车内饰的环保性，新车味道有点大',
+    ],
+    '这条与库里「605 旗舰版 + 天神之眼 B（18.09 万）」的配置直接冲突：三个不同视频都指向「别加 B」。同盘点还评了 Q06、T7、S07、零跑 C10/C11/C16、大众 ID.T6。',
+  ),
+  review(
+    'rev_seal06_juzhang_flash',
+    'v_seal06',
+    '蔚车情报局局长',
+    '挟闪充以制诸侯！海狮06+宋Ultra通杀15万级？',
+    'https://www.bilibili.com/video/BV1ddNMzyEMx',
+    '2026-03-08',
+    '推荐',
+    '二代刀片 + 闪充全系都有，买 15.99 万入门 605 领航就够；天神之眼 B（+9900）他明确不建议加。',
+    [
+      '闪充是这台车最大卖点，入门版就有，功能配置（前排通风加热、电尾门、50W 无线充）也不缺',
+      '+9000 可以选长续航（+13 度 / +105km）或舒适包：单日超 100km、北方用户才需要大电池',
+      '顶配没必要：18 万级已经有 5C、空间更大或智驾更聪明的选择',
+      '天神之眼 B 的 BOM 差距约 4000，卖 9900 不值；B 与 C 只在白天中高速 AEB 拉差距，领航没本质差别',
+    ],
+    [
+      '如果是我买这个车，我觉得入门版型，1599 那个 605 领航就够了',
+      '天神之眼 B 该不该加？直接说我的判断：不该',
+      '这枚装饰属性大于实际属性的激光雷达',
+    ],
+    '二代刀片电池发布后的配置解析，针对 2026 款海狮06 EV。',
+  ),
+
+  // 零跑 C10 / C11（2026-10 盘点，零跑车系合并评价）
+  review(
+    'rev_c10_juzhang_national',
+    'v_c10',
+    '蔚车情报局局长',
+    '国庆档15万级SUV盘点！谁能撼动比亚迪？',
+    'https://www.bilibili.com/video/BV18XHW66E4p',
+    '2026-10-05',
+    '谨慎推荐',
+    '把零跑配置表当成「15 万级该有什么」的参考答案：800V、CCD、零重力、8295、HUD、冰箱都能给到；但智驾、车机分阶功能和蓝牙钥匙是明确的坑。',
+    [
+      '配置参考：800V 电池架构、半主动悬架（CCD）、零重力座椅带通风加热按摩、二排靠背可调 + 小桌板、17 寸 3K 屏 + 8295P、60 寸 HUD，加钱还能上冰箱/香氛/隔音玻璃',
+      '缺点是四条：续航达成率不高（尤其开空调跑高速）、智驾现在不好用、车机的二阶三阶功能不够丰富且版本老、蓝牙钥匙不好用（苹果好于安卓）',
+      'C10 版本建议：看 600 激光雷达版（不是入门悦享版）',
+      '他对零跑智驾的判断是「硬件统一、等把端到端和世界模型的红利吃透就会给你」，属于押未来',
+    ],
+    [
+      '零跑的车，那这个时候你就可以去翻下零跑的配置表，基本可以当成参考答案来看',
+      '续航达成率不是很高，尤其是开了空调上高速之后',
+      '智驾现在不好用……你再反过用过华为的、用过新势力的，你就知道它还是有差距的',
+      '不知道是为什么，它那个蓝牙钥匙就是不好用',
+    ],
+    '同上一条盘点视频。他评价的是零跑 C 系列整体（C10/C11/C16），C10 的具体版本建议为「600 激光雷达版」。',
+  ),
+  review(
+    'rev_c11_juzhang_national',
+    'v_c11',
+    '蔚车情报局局长',
+    '国庆档15万级SUV盘点！谁能撼动比亚迪？',
+    'https://www.bilibili.com/video/BV18XHW66E4p',
+    '2026-10-05',
+    '谨慎推荐',
+    'C11 的配置与用料比 C10/C16 高半档，版本要买激光雷达至尊版；选了低配不如回头买 C10，C16 则被他直接判「不推荐」。',
+    [
+      'C16 是 C10 的拉皮，五座不如买 C11，六座只有刚需纯电才考虑（第三排坐大人憋屈）',
+      'C11 配置和用料比另外两台高半档，但中低配不如买 C10 划算',
+      '版本建议：C11 看激光雷达至尊版；C10 看 600 激光雷达版',
+      '零跑的四条通病（续航达成率、智驾、车机分阶功能、蓝牙钥匙）同样适用',
+    ],
+    [
+      'C16 不推荐，因为五座的话你不如回头去看 C11',
+      'C11 的配置和用料，会比另外两辆高半档',
+      'C10 看 600 激光雷达版，C11 看激光雷达至尊版',
+    ],
+    '同上一条盘点视频；C11 与 C10 是同一段落的比较，没有单独长评。',
+  ),
+  review(
+    'rev_idt6_juzhang_national',
+    'v_idt6',
+    '蔚车情报局局长',
+    '国庆档15万级SUV盘点！谁能撼动比亚迪？',
+    'https://www.bilibili.com/video/BV18XHW66E4p',
+    '2026-10-05',
+    '中立',
+    '「如果它有 800V，我会推荐你看 660 Max 加座椅选装；但它不是」——德系底盘和做工是长板，400V 平台与内饰用料分层是硬伤，买不买看你对大众标的认可度。',
+    [
+      '值得买的长板两条：德系底盘质感（转向调得轻快但底盘稳重，「老德一致还是有两把刷子」）、做工流程严谨（零部件标签都能看出来）',
+      '短板：流程严谨不等于用料扎实，隔板打开就是一块大板、小件表面处理比自家 8/9 系差一档；400V 平台在今天是明显落后',
+      '智驾是大众 + 地平线的酷睿程方案（不是小鹏），他认为「性责有不性责无」',
+      '版本：660 Max 加座椅选装是他的推荐项，前提是你能接受 400V',
+    ],
+    [
+      '如果说它有 800V，那冲着我对地平线的信赖以及对大众的尊敬，我会推荐你看看 660 Max 加个座椅选装，但它不是',
+      '流程严谨不代表它用料扎实',
+      '所以要不要买，就看你对大众这个标有多看重了',
+    ],
+    '同上一条盘点视频。注意这是「如果有 800V 才会推荐」的条件句，不等于无条件推荐。',
+  ),
+]
+
+// ── 试驾表 ───────────────────────────────────────────────────────────
+// 只预置 T7 / Q06 两张空表：分数留空，等你自己在同一路段测完再填。
+function blankDrive(id: string, vehicleId: string, route: string): TestDriveRecord {
+  const scores = {} as TestDriveRecord['scores']
+  for (const criterion of TEST_DRIVE_CRITERIA) scores[criterion.id] = { score: null, note: '' }
+  return {
+    id,
+    vehicleId,
+    date: '',
+    route,
+    scores,
+    summary: '',
+    createdAt: `${SALES_CHECK_DATE}T12:00:00+08:00`,
+    updatedAt: `${SALES_CHECK_DATE}T12:00:00+08:00`,
+  }
+}
+
+const testDrives: TestDriveRecord[] = [
+  blankDrive('drive_t7', 'v_t7', '待填：杭州—上虞同一路段，去程/回程各一次'),
+  blankDrive('drive_q06', 'v_q06', '待填：杭州—上虞同一路段，去程/回程各一次'),
 ]
 
 export function seedData(): AppData {
@@ -1037,6 +1976,9 @@ export function seedData(): AppData {
     version: 1,
     vehicles,
     quotes,
+    sales,
+    reviews,
+    testDrives,
     settings: {
       ...defaultSettings(),
       budgetMin: 150000,

@@ -4,6 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#070a10" />
+    <script>
+      // 首屏之前套用主题，避免深色闪烁
+      (function () {
+        var LIGHT = { ivory: 1, cloud: 1, sand: 1 };
+        var id = 'deep';
+        try {
+          var saved = localStorage.getItem('carfleet.theme');
+          if (saved) id = saved;
+        } catch (e) {}
+        var root = document.documentElement;
+        root.dataset.theme = id;
+        root.dataset.tone = LIGHT[id] ? 'light' : 'dark';
+        root.style.colorScheme = LIGHT[id] ? 'light' : 'dark';
+      })();
+    </script>
     <meta
       name="description"
       content="CARFLEET 个人选车工作台：车型管理、参数对比、价格追踪、个性化评分与长期用车成本测算。"

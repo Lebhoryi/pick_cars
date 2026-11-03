@@ -5,6 +5,7 @@ import { cn, formatWan, truncate } from '@/lib/format'
 import { useApp } from '@/store/AppStore'
 import { Badge, IconButton } from '@/components/ui/primitives'
 import { ScoreRing, StatusBadge, VehicleCover } from '@/components/vehicle/VehicleVisuals'
+import { SalesPill } from '@/components/sales/SalesPanel'
 
 export function VehicleCard({
   vehicle,
@@ -19,11 +20,12 @@ export function VehicleCard({
   filter: FilterResult
   onEdit: (vehicle: Vehicle) => void
 }) {
-  const { data, dispatch, toast } = useApp()
+  const { data, dispatch, toast, salesMap } = useApp()
   const navigate = useNavigate()
   const inCompare = data.compareIds.includes(vehicle.id)
   const landing = priceInfo.breakdown.landing
   const noSubsidy = priceInfo.quote && !priceInfo.quote.includeTradeIn && (priceInfo.quote.tradeInSubsidy ?? 0) > 0
+  const reviewCount = data.reviews.filter((review) => review.vehicleId === vehicle.id).length
 
   const toggleCompare = () => {
     if (!inCompare && data.compareIds.length >= 6) {
@@ -103,7 +105,19 @@ export function VehicleCard({
           ) : null}
         </div>
 
-        <p className="mt-3 line-clamp-2 min-h-[32px] text-[11.5px] leading-4 text-mist-400">
+        <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-line/40 pt-2">
+          <SalesPill summary={salesMap[vehicle.id]} />
+          <span className="flex items-center gap-2">
+            {salesMap[vehicle.id]?.hasData && salesMap[vehicle.id].coverage < 1 ? (
+              <span className="text-[9.5px] text-amber-200/70">部分月份待核实</span>
+            ) : null}
+            {reviewCount > 0 ? (
+              <span className="text-[9.5px] text-mist-500">车评 {reviewCount}</span>
+            ) : null}
+          </span>
+        </div>
+
+        <p className="mt-2 line-clamp-2 min-h-[32px] text-[11.5px] leading-4 text-mist-400">
           {vehicle.reason || '尚未填写关注原因。'}
         </p>
       </div>

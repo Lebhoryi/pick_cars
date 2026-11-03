@@ -18,6 +18,7 @@ import {
 import { cn, formatWan, monthsUntil } from '@/lib/format'
 import { useApp } from '@/store/AppStore'
 import { Button } from '@/components/ui/primitives'
+import { ThemeMenu } from '@/components/layout/ThemeMenu'
 
 const NAV = [
   {
@@ -133,6 +134,10 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             </div>
           </div>
         </Link>
+      </div>
+
+      <div className="px-3 pb-2">
+        <ThemeMenu />
       </div>
 
       <div className="border-t border-line/70 px-4 py-3">

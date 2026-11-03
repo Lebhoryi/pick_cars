@@ -11,10 +11,21 @@ import {
   type ReactNode,
 } from 'react'
 import { Check, Info, TriangleAlert, X } from 'lucide-react'
-import type { AppData, AppSettings, PriceQuote, ScoringState, Vehicle } from '@/types'
+import type {
+  AppData,
+  AppSettings,
+  PriceQuote,
+  ReviewRecord,
+  SalesRecord,
+  SalesSummary,
+  TestDriveRecord,
+  ScoringState,
+  Vehicle,
+} from '@/types'
 import { seedData } from '@/data/seed'
 import { loadData, saveData } from '@/lib/storage'
 import { buildPriceMap } from '@/lib/price'
+import { buildSalesMap } from '@/lib/sales'
 import { computeAllScores } from '@/lib/score'
 import { cn } from '@/lib/format'
 
@@ -24,6 +35,12 @@ export type AppAction =
   | { type: 'ADD_QUOTE'; quote: PriceQuote }
   | { type: 'UPDATE_QUOTE'; quote: PriceQuote }
   | { type: 'DELETE_QUOTE'; id: string }
+  | { type: 'UPSERT_SALES'; record: SalesRecord }
+  | { type: 'DELETE_SALES'; id: string }
+  | { type: 'UPSERT_REVIEW'; review: ReviewRecord }
+  | { type: 'DELETE_REVIEW'; id: string }
+  | { type: 'UPSERT_TEST_DRIVE'; drive: TestDriveRecord }
+  | { type: 'DELETE_TEST_DRIVE'; id: string }
   | { type: 'SET_SETTINGS'; settings: AppSettings }
   | { type: 'SET_SCORING'; scoring: ScoringState }
   | { type: 'SET_COMPARE_IDS'; ids: string[] }
@@ -50,6 +67,9 @@ function reducer(state: AppData, action: AppAction): AppData {
         ...state,
         vehicles: state.vehicles.filter((v) => v.id !== action.id),
         quotes: state.quotes.filter((q) => q.vehicleId !== action.id),
+        sales: state.sales.filter((s) => s.vehicleId !== action.id),
+        reviews: state.reviews.filter((r) => r.vehicleId !== action.id),
+        testDrives: state.testDrives.filter((d) => d.vehicleId !== action.id),
         compareIds: state.compareIds.filter((id) => id !== action.id),
         scoring: {
           ...state.scoring,
@@ -68,6 +88,39 @@ function reducer(state: AppData, action: AppAction): AppData {
       }
     case 'DELETE_QUOTE':
       return { ...state, quotes: state.quotes.filter((q) => q.id !== action.id) }
+    case 'UPSERT_SALES': {
+      const record = action.record
+      const rest = state.sales.filter(
+        (s) => s.id !== record.id && !(s.vehicleId === record.vehicleId && s.month === record.month),
+      )
+      const sales = [...rest, record].sort(
+        (a, b) => a.vehicleId.localeCompare(b.vehicleId) || a.month.localeCompare(b.month),
+      )
+      return { ...state, sales }
+    }
+    case 'DELETE_SALES':
+      return { ...state, sales: state.sales.filter((s) => s.id !== action.id) }
+    case 'UPSERT_REVIEW': {
+      const exists = state.reviews.some((r) => r.id === action.review.id)
+      return {
+        ...state,
+        reviews: exists
+          ? state.reviews.map((r) => (r.id === action.review.id ? action.review : r))
+          : [...state.reviews, action.review],
+      }
+    }
+    case 'DELETE_REVIEW':
+      return { ...state, reviews: state.reviews.filter((r) => r.id !== action.id) }
+    case 'UPSERT_TEST_DRIVE': {
+      const drive = { ...action.drive, updatedAt: new Date().toISOString() }
+      const exists = state.testDrives.some((d) => d.id === drive.id)
+      return {
+        ...state,
+        testDrives: exists ? state.testDrives.map((d) => (d.id === drive.id ? drive : d)) : [...state.testDrives, drive],
+      }
+    }
+    case 'DELETE_TEST_DRIVE':
+      return { ...state, testDrives: state.testDrives.filter((d) => d.id !== action.id) }
     case 'SET_SETTINGS':
       return { ...state, settings: action.settings }
     case 'SET_SCORING':
@@ -97,6 +150,9 @@ function reducer(state: AppData, action: AppAction): AppData {
         ...state,
         vehicles: [],
         quotes: [],
+        sales: [],
+        reviews: [],
+        testDrives: [],
         compareIds: [],
         scoring: { ...state.scoring, snapshots: [] },
       }
@@ -117,6 +173,7 @@ interface AppContextValue {
   dispatch: Dispatch<AppAction>
   priceMap: ReturnType<typeof buildPriceMap>
   scoresResult: ReturnType<typeof computeAllScores>
+  salesMap: Record<string, SalesSummary>
   saveStatus: { state: 'saved' | 'saving' | 'error'; at: string | null; error: string | null; bytes: number }
   toast: (message: string, tone?: ToastTone) => void
 }
@@ -214,10 +271,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     () => computeAllScores(data.vehicles, data.quotes, data.settings, data.scoring),
     [data.vehicles, data.quotes, data.settings, data.scoring],
   )
+  const salesMap = useMemo(() => buildSalesMap(data.vehicles, data.sales), [data.vehicles, data.sales])
 
   const value = useMemo<AppContextValue>(
-    () => ({ data, dispatch, priceMap, scoresResult, saveStatus, toast }),
-    [data, priceMap, scoresResult, saveStatus, toast],
+    () => ({ data, dispatch, priceMap, scoresResult, salesMap, saveStatus, toast }),
+    [data, priceMap, scoresResult, salesMap, saveStatus, toast],
   )
 
   return (

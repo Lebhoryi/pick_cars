@@ -4,13 +4,20 @@ import type {
   PriceQuote,
   Provenance,
   RankSnapshot,
+  ReviewRecord,
+  SalesRecord,
   ScoringState,
+  TestDriveRecord,
   SourceRef,
   Vehicle,
   VehicleSpecs,
 } from '@/types'
 import {
   FOCUS_STATUSES,
+  TEST_DRIVE_CRITERIA,
+  REVIEW_CHANNELS,
+  REVIEW_STANCES,
+  SALES_SCOPES,
   SCORE_DIM_IDS,
   SOURCE_KINDS,
   TAX_POLICY_MODES,
@@ -32,6 +39,7 @@ import {
 import { ALL_SPEC_FIELDS } from '@/data/specSchema'
 import { seedData } from '@/data/seed'
 import { clamp, isNum, toNumberOrNull } from '@/lib/format'
+import { normalizeMonth } from '@/lib/sales'
 
 type Rec = Record<string, unknown>
 
@@ -158,6 +166,8 @@ export function normalizeVehicle(raw: unknown, index: number, warnings: string[]
     keyCandidate: raw.keyCandidate === true,
     accent: /^#[0-9a-fA-F]{6}$/.test(str(raw.accent)) ? str(raw.accent) : ACCENTS[index % ACCENTS.length],
     coverImage: typeof raw.coverImage === 'string' && raw.coverImage.length > 0 ? raw.coverImage : undefined,
+    coverWide: typeof raw.coverWide === 'string' && raw.coverWide.length > 0 ? raw.coverWide : undefined,
+    imageCredit: str(raw.imageCredit) || undefined,
     followedAt: str(raw.followedAt) || todayISO(),
     reason: str(raw.reason),
     notes: str(raw.notes),
@@ -224,6 +234,118 @@ function normalizeQuote(raw: unknown, index: number, vehicleIds: Set<string>, wa
     conditions: str(raw.conditions),
     note: str(raw.note),
     createdAt: str(raw.createdAt) || new Date().toISOString(),
+  }
+}
+
+function normalizeSales(
+  raw: unknown,
+  index: number,
+  vehicleIds: Set<string>,
+  warnings: string[],
+): SalesRecord | null {
+  if (!isRecord(raw)) {
+    warnings.push(`第 ${index + 1} 条销量记录不是对象，已跳过`)
+    return null
+  }
+  const vehicleId = str(raw.vehicleId)
+  if (!vehicleIds.has(vehicleId)) {
+    warnings.push(`第 ${index + 1} 条销量记录引用了不存在的车型（${vehicleId || '空'}），已跳过`)
+    return null
+  }
+  const month = normalizeMonth(str(raw.month))
+  if (!month) {
+    warnings.push(`第 ${index + 1} 条销量记录的月份不是 YYYY-MM（${str(raw.month) || '空'}），已跳过`)
+    return null
+  }
+  return {
+    id: str(raw.id) || uid('sale'),
+    vehicleId,
+    month,
+    units: numOrNull(raw.units),
+    scope: oneOf(raw.scope, SALES_SCOPES, '待核实'),
+    status: oneOf(raw.status, VERIFICATION_LEVELS, '待核实'),
+    sourceUrl: str(raw.sourceUrl),
+    sourceLabel: str(raw.sourceLabel),
+    note: str(raw.note),
+    createdAt: str(raw.createdAt) || new Date().toISOString(),
+  }
+}
+
+/** 同一车型同一月份只保留一条（后写入的覆盖先写入的） */
+function dedupeSales(records: SalesRecord[]): SalesRecord[] {
+  const byKey = new Map<string, SalesRecord>()
+  for (const record of records) byKey.set(`${record.vehicleId}|${record.month}`, record)
+  return Array.from(byKey.values()).sort(
+    (a, b) => a.vehicleId.localeCompare(b.vehicleId) || a.month.localeCompare(b.month),
+  )
+}
+
+function normalizeReviews(
+  raw: unknown,
+  index: number,
+  vehicleIds: Set<string>,
+  warnings: string[],
+): ReviewRecord | null {
+  if (!isRecord(raw)) {
+    warnings.push(`第 ${index + 1} 条车评不是对象，已跳过`)
+    return null
+  }
+  const vehicleId = str(raw.vehicleId)
+  if (!vehicleIds.has(vehicleId)) {
+    warnings.push(`第 ${index + 1} 条车评引用了不存在的车型（${vehicleId || '空'}），已跳过`)
+    return null
+  }
+  return {
+    id: str(raw.id) || uid('rev'),
+    vehicleId,
+    channel: oneOf(raw.channel, REVIEW_CHANNELS, '超哥超车'),
+    title: str(raw.title) || '未命名车评',
+    url: str(raw.url),
+    publishedAt: str(raw.publishedAt) || todayISO(),
+    stance: oneOf(raw.stance, REVIEW_STANCES, '未表态'),
+    summary: str(raw.summary),
+    points: stringArray(raw.points),
+    quotes: stringArray(raw.quotes),
+    note: str(raw.note),
+    status: oneOf(raw.status, VERIFICATION_LEVELS, '媒体'),
+    createdAt: str(raw.createdAt) || new Date().toISOString(),
+  }
+}
+
+function normalizeTestDrives(
+  raw: unknown,
+  index: number,
+  vehicleIds: Set<string>,
+  warnings: string[],
+): TestDriveRecord | null {
+  if (!isRecord(raw)) {
+    warnings.push(`第 ${index + 1} 条试驾记录不是对象，已跳过`)
+    return null
+  }
+  const vehicleId = str(raw.vehicleId)
+  if (!vehicleIds.has(vehicleId)) {
+    warnings.push(`第 ${index + 1} 条试驾记录引用了不存在的车型（${vehicleId || '空'}），已跳过`)
+    return null
+  }
+  const rawScores = isRecord(raw.scores) ? raw.scores : {}
+  const scores = {} as TestDriveRecord['scores']
+  for (const criterion of TEST_DRIVE_CRITERIA) {
+    const item = isRecord(rawScores[criterion.id]) ? (rawScores[criterion.id] as Rec) : {}
+    const score = numOrNull(item.score)
+    scores[criterion.id] = {
+      score: score === null ? null : clamp(score, 0, 5),
+      note: str(item.note),
+    }
+  }
+  return {
+    id: str(raw.id) || uid('drive'),
+    vehicleId,
+    date: str(raw.date) || todayISO(),
+    route: str(raw.route),
+    scores,
+    summary: str(raw.summary),
+    createdAt: str(raw.createdAt) || new Date().toISOString(),
+    updatedAt: str(raw.updatedAt) || new Date().toISOString(),
   }
 }
 
@@ -345,6 +467,20 @@ export function validateAndNormalize(raw: unknown): ValidationResult {
 
   const settings = normalizeSettings(raw.settings)
   const scoring = normalizeScoring(raw.scoring, ids)
+  const rawSales = Array.isArray(raw.sales) ? raw.sales : []
+  const sales = dedupeSales(
+    rawSales
+      .map((s, index) => normalizeSales(s, index, ids, warnings))
+      .filter((s): s is SalesRecord => s !== null),
+  )
+  const rawReviews = Array.isArray(raw.reviews) ? raw.reviews : []
+  const reviews = rawReviews
+    .map((r, index) => normalizeReviews(r, index, ids, warnings))
+    .filter((r): r is ReviewRecord => r !== null)
+  const rawDrives = Array.isArray(raw.testDrives) ? raw.testDrives : []
+  const testDrives = rawDrives
+    .map((item, index) => normalizeTestDrives(item, index, ids, warnings))
+    .filter((item): item is TestDriveRecord => item !== null)
   const compareIds = Array.isArray(raw.compareIds)
     ? raw.compareIds.filter((id): id is string => typeof id === 'string' && ids.has(id))
     : []
@@ -360,6 +496,9 @@ export function validateAndNormalize(raw: unknown): ValidationResult {
       version: numOrNull(raw.version) ?? APP_VERSION,
       vehicles,
       quotes,
+      sales,
+      reviews,
+      testDrives,
       settings,
       scoring,
       compareIds,
@@ -375,6 +514,30 @@ export function parseImport(text: string): ValidationResult {
     return { ok: false, errors: ['文件不是合法 JSON，请检查是否选择了本应用导出的 .json 文件。'], warnings: [] }
   }
   return validateAndNormalize(raw)
+}
+
+/**
+ * 老数据没有封面图时，用示例数据里的官方图补齐（只补图片字段，不动用户数据）。
+ * 换了封面或删过封面的车型不处理，避免覆盖用户自己的选择。
+ */
+function fillSeedCovers(data: AppData): AppData {
+  const seedCovers = new Map(
+    seedData()
+      .vehicles.filter((vehicle) => vehicle.coverImage)
+      .map((vehicle) => [
+        vehicle.id,
+        { coverImage: vehicle.coverImage, coverWide: vehicle.coverWide, imageCredit: vehicle.imageCredit },
+      ]),
+  )
+  let changed = false
+  const vehicles = data.vehicles.map((vehicle) => {
+    if (vehicle.coverImage) return vehicle
+    const cover = seedCovers.get(vehicle.id)
+    if (!cover) return vehicle
+    changed = true
+    return { ...vehicle, coverImage: cover.coverImage, coverWide: cover.coverWide, imageCredit: cover.imageCredit }
+  })
+  return changed ? { ...data, vehicles } : data
 }
 
 export interface LoadResult {
@@ -409,7 +572,7 @@ export function loadData(): LoadResult {
         warning: `本地数据校验失败，已加载初始数据。原数据已尝试备份。${parsed.errors[0] ?? ''}`,
       }
     }
-    return { data: parsed.data, source: 'storage' }
+    return { data: fillSeedCovers(parsed.data), source: 'storage' }
   } catch {
     return { data: seedData(), source: 'recovered', warning: '读取本地数据失败，已加载初始数据。' }
   }
@@ -455,10 +618,27 @@ export function mergeData(current: AppData, incoming: AppData): AppData {
   const validIds = new Set(vehicles.map((v) => v.id))
   const quoteById = new Map(current.quotes.filter((q) => validIds.has(q.vehicleId)).map((q) => [q.id, q]))
   for (const quote of incoming.quotes) if (validIds.has(quote.vehicleId)) quoteById.set(quote.id, quote)
+  const salesByKey = new Map(
+    current.sales.filter((s) => validIds.has(s.vehicleId)).map((s) => [`${s.vehicleId}|${s.month}`, s]),
+  )
+  for (const record of incoming.sales) {
+    if (validIds.has(record.vehicleId)) salesByKey.set(`${record.vehicleId}|${record.month}`, record)
+  }
+  const reviewById = new Map(
+    current.reviews.filter((r) => validIds.has(r.vehicleId)).map((r) => [r.id, r]),
+  )
+  for (const review of incoming.reviews) if (validIds.has(review.vehicleId)) reviewById.set(review.id, review)
+  const driveByVehicle = new Map(
+    current.testDrives.filter((d) => validIds.has(d.vehicleId)).map((d) => [d.vehicleId, d]),
+  )
+  for (const drive of incoming.testDrives) if (validIds.has(drive.vehicleId)) driveByVehicle.set(drive.vehicleId, drive)
   return {
     version: APP_VERSION,
     vehicles,
     quotes: Array.from(quoteById.values()),
+    sales: dedupeSales(Array.from(salesByKey.values())),
+    reviews: Array.from(reviewById.values()),
+    testDrives: Array.from(driveByVehicle.values()),
     settings: incoming.settings,
     scoring: incoming.scoring,
     compareIds: Array.from(new Set([...current.compareIds, ...incoming.compareIds])).filter((id) => validIds.has(id)),

@@ -1,12 +1,16 @@
 import { Fragment, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowDownWideNarrow, Check, Columns3, Download, EyeOff, Info, MoveHorizontal, RotateCcw, X } from 'lucide-react'
-import type { ScoreResult, Vehicle } from '@/types'
+import type { ReviewRecord, ScoreResult, Vehicle } from '@/types'
 import { useApp } from '@/store/AppStore'
 import { cn, formatWan } from '@/lib/format'
 import { computeBreakdown } from '@/lib/price'
 import { computeCost } from '@/lib/cost'
 import { SPEC_GROUPS, formatSpecValue } from '@/data/specSchema'
+import { formatUnits, monthLabel } from '@/lib/sales'
+import { truncate } from '@/lib/format'
+import { REVIEW_CHANNELS, TEST_DRIVE_CRITERIA } from '@/types'
+import { summarizeTestDrive } from '@/lib/testDrive'
 import { Badge, Button, EmptyState, InfoTip, PageHeader, SectionTitle } from '@/components/ui/primitives'
 import { VehicleCover } from '@/components/vehicle/VehicleVisuals'
 import { downloadText, compareCsv } from '@/lib/csv'
@@ -44,6 +48,9 @@ const GROUPS = [
   '座舱与车机',
   '安全配置',
   '能耗与长期使用成本',
+  '销量表现',
+  '车评观点',
+  '试驾实测',
   '品牌、售后与质保',
   '保值率及未来二手车风险',
 ]
@@ -68,7 +75,9 @@ function isMissing(raw: unknown): boolean {
 }
 
 export function ComparePage() {
-  const { data, priceMap, scoresResult, dispatch, toast } = useApp()
+  const { data, priceMap, scoresResult, salesMap, dispatch, toast } = useApp()
+  const reviews = data.reviews
+  const testDrives = data.testDrives
   const [sort, setSort] = useState<SortKey>('manual')
   const [hideSame, setHideSame] = useState(false)
 
@@ -88,8 +97,8 @@ export function ComparePage() {
   }, [selected, sort, priceMap, scoresResult.scores])
 
   const rows = useMemo(
-    () => buildRows(ordered, priceMap, scoresResult.scores, data.settings),
-    [ordered, priceMap, scoresResult.scores, data.settings],
+    () => buildRows(ordered, priceMap, scoresResult.scores, data.settings, salesMap, reviews, testDrives),
+    [ordered, priceMap, scoresResult.scores, data.settings, salesMap, reviews, testDrives],
   )
   const visibleRows = useMemo(
     () => (hideSame ? rows.filter((row) => new Set(row.values.map((value) => value.display)).size > 1) : rows),
@@ -151,7 +160,7 @@ export function ComparePage() {
             <Badge tone="teal" dot>
               已选 {selected.length} / 6
             </Badge>
-            <Badge tone="neutral">15 个维度</Badge>
+            <Badge tone="neutral">{GROUPS.length} 个维度</Badge>
             <Badge tone="neutral">缺失数据显示「待核实」</Badge>
           </>
         }
@@ -201,7 +210,7 @@ export function ComparePage() {
                       : 'border-line/70 bg-white/[0.012] hover:border-line-strong hover:bg-white/[0.025]',
                   )}
                 >
-                  <VehicleCover vehicle={vehicle} compact className="h-12 w-16 shrink-0 rounded-lg" />
+                  <VehicleCover vehicle={vehicle} compact className="h-[46px] w-[82px] shrink-0 rounded-lg" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span className="truncate text-[11.5px] font-medium text-mist-100">
@@ -315,27 +324,40 @@ export function ComparePage() {
                         key={vehicle.id}
                         className="min-w-[200px] border-b border-l border-line/70 bg-ink-850 px-3 py-2.5 text-left align-top"
                       >
-                        <div className="flex items-start gap-2">
-                          <VehicleCover vehicle={vehicle} compact className="h-10 w-14 shrink-0 rounded-md" />
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate text-[11.5px] font-semibold text-mist-100">
-                              {vehicle.brand} {vehicle.model}
-                            </div>
-                            <div className="truncate text-[9px] text-mist-500">{vehicle.trim || '版本待补充'}</div>
-                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                              <span className="num text-[10px] text-accent">{formatWan(priceMap[vehicle.id]?.breakdown.landing)}</span>
-                              <span className="text-[9px] text-mist-500">· {scoresResult.scores[vehicle.id]?.total?.toFixed(1) ?? '—'} 分</span>
-                              {priceMap[vehicle.id]?.quote?.status === '待核实' ? <Badge tone="amber">价格待核实</Badge> : null}
+                        <div className="space-y-1.5">
+                          <div className="relative">
+                            <VehicleCover
+                              vehicle={vehicle}
+                              variant="wide"
+                              className="aspect-[21/9] w-full rounded-md border border-line/60"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => toggle(vehicle.id)}
+                              aria-label="移出对比"
+                              className="absolute right-1 top-1 flex size-5 items-center justify-center rounded-md border border-white/15 bg-ink-950/65 text-mist-200 backdrop-blur transition hover:border-danger/40 hover:text-danger"
+                            >
+                              <X className="size-3" />
+                            </button>
+                            {vehicle.keyCandidate ? (
+                              <span className="pointer-events-none absolute left-1 top-1 inline-flex items-center gap-1 rounded-md border border-accent/35 bg-ink-950/65 px-1.5 py-0.5 text-[8.5px] font-medium text-accent backdrop-blur">
+                                重点
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="flex items-start justify-between gap-1.5">
+                            <div className="min-w-0">
+                              <div className="truncate text-[11.5px] font-semibold text-mist-100">
+                                {vehicle.brand} {vehicle.model}
+                              </div>
+                              <div className="truncate text-[9px] text-mist-500">{vehicle.trim || '版本待补充'}</div>
                             </div>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => toggle(vehicle.id)}
-                            aria-label="移出对比"
-                            className="flex size-5 shrink-0 items-center justify-center rounded text-mist-500 hover:bg-white/5 hover:text-danger"
-                          >
-                            <X className="size-3" />
-                          </button>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="num text-[10px] text-accent">{formatWan(priceMap[vehicle.id]?.breakdown.landing)}</span>
+                            <span className="text-[9px] text-mist-500">· {scoresResult.scores[vehicle.id]?.total?.toFixed(1) ?? '—'} 分</span>
+                            {priceMap[vehicle.id]?.quote?.status === '待核实' ? <Badge tone="amber">价格待核实</Badge> : null}
+                          </div>
                         </div>
                       </th>
                     ))}
@@ -451,6 +473,9 @@ function buildRows(
   priceMap: ReturnType<typeof useApp>['priceMap'],
   scores: Record<string, ScoreResult>,
   settings: ReturnType<typeof useApp>['data']['settings'],
+  salesMap: ReturnType<typeof useApp>['salesMap'],
+  reviews: ReviewRecord[],
+  testDrives: ReturnType<typeof useApp>['data']['testDrives'],
 ): CompareRow[] {
   const rows: CompareRow[] = []
 
@@ -645,6 +670,109 @@ function buildRows(
   add('能耗与长期使用成本', `${settings.cost.years} 年总持有成本`, vehicles.map((v) => cost(v).total), 'lower', 'money', undefined, '含购车、能源、保险、保养、机会成本并扣除残值')
   add('能耗与长期使用成本', '年均综合成本', vehicles.map((v) => cost(v).perYear), 'lower', 'money', undefined, '总持有成本 ÷ 持有年限')
   add('能耗与长期使用成本', '每公里综合成本', vehicles.map((v) => { const perKm = cost(v).perKm; return perKm === null ? null : Math.round(perKm * 100) / 100 }), 'lower', 'number', (value) => `¥${value} /km`)
+
+  const salesOf = (vehicle: Vehicle) => salesMap[vehicle.id]
+  const windowEnd = salesMap[vehicles[0]?.id ?? '']?.windowEnd ?? '2026-10'
+
+  add('销量表现', '上市时间', vehicles.map((v) => v.specs.basic.launchDate || null), 'none', 'text')
+  add(
+    '销量表现',
+    '统计窗口',
+    vehicles.map((v) => (salesOf(v) ? `${monthLabel(salesOf(v).windowStart)} 起` : null)),
+    'none',
+    'text',
+    undefined,
+    '窗口 = 上市月与 2026-01 取较晚者，到最新已公布月为止',
+  )
+  add(
+    '销量表现',
+    '累计销量',
+    vehicles.map((v) => salesOf(v)?.cumulative ?? null),
+    'none',
+    'number',
+    (value) => formatUnits(Number(value)),
+    `窗口内已录月份之和（截至 ${monthLabel(windowEnd)}）；窗口起点随上市时间不同，只比量级，不做排名`,
+  )
+  add(
+    '销量表现',
+    '月均销量',
+    vehicles.map((v) => salesOf(v)?.monthlyAvg ?? null),
+    'none',
+    'number',
+    (value) => formatUnits(Number(value)),
+    '只除以已录月份数，不是窗口月数',
+  )
+  add(
+    '销量表现',
+    '最新月销量',
+    vehicles.map((v) => salesOf(v)?.latest?.units ?? null),
+    'none',
+    'number',
+    (value) => formatUnits(Number(value)),
+  )
+  add(
+    '销量表现',
+    '数据覆盖',
+    vehicles.map((v) => {
+      const summary = salesOf(v)
+      return summary && summary.hasData ? Math.round(summary.coverage * 100) : null
+    }),
+    'higher',
+    'percent',
+    undefined,
+    '已录月份 ÷ 窗口月数；口径混用（批发/交付/零售），只看量级',
+  )
+
+  const reviewOf = (vehicle: Vehicle, channel: string) =>
+    reviews
+      .filter((review) => review.vehicleId === vehicle.id && review.channel === channel)
+      .slice()
+      .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))[0]
+
+  for (const channel of REVIEW_CHANNELS) {
+    add(
+      '车评观点',
+      `${channel} · 结论`,
+      vehicles.map((v) => reviewOf(v, channel)?.stance ?? null),
+      'none',
+      'text',
+      undefined,
+      '只收录该账号；推荐/谨慎推荐/中立/劝退/未表态，未覆盖显示待核实',
+    )
+    add(
+      '车评观点',
+      `${channel} · 一句话`,
+      vehicles.map((v) => {
+        const review = reviewOf(v, channel)
+        return review ? truncate(review.summary, 60) : null
+      }),
+      'none',
+      'text',
+    )
+  }
+
+  const driveOf = (vehicle: Vehicle) => testDrives.find((drive) => drive.vehicleId === vehicle.id)
+
+  for (const criterion of TEST_DRIVE_CRITERIA) {
+    add(
+      '试驾实测',
+      criterion.label,
+      vehicles.map((v) => driveOf(v)?.scores[criterion.id]?.score ?? null),
+      'higher',
+      'number',
+      (value) => `${Number(value).toFixed(1)} / 5`,
+      criterion.hint,
+    )
+  }
+  add(
+    '试驾实测',
+    '试驾均分',
+    vehicles.map((v) => summarizeTestDrive(driveOf(v)).average),
+    'higher',
+    'number',
+    (value) => `${Number(value).toFixed(1)} / 5`,
+    '只对已评项目取均值；没有试驾记录显示「待核实」',
+  )
 
   spec('品牌、售后与质保', 'basic.warranty')
   spec('品牌、售后与质保', 'basic.serviceNetwork')

@@ -19,14 +19,17 @@ import {
   StickyNote,
   Trash2,
   TrendingDown,
+  TrendingUp,
   TriangleAlert,
+  Gauge,
+  MessageSquareQuote,
   Wrench,
   Zap,
   Armchair,
   CircleDollarSign,
 } from 'lucide-react'
-import type { PriceQuote, ScoreDimId, Vehicle } from '@/types'
-import { SCORE_DIMS } from '@/types'
+import type { PriceQuote, ReviewRecord, ScoreDimId, Vehicle } from '@/types'
+import { REVIEW_CHANNELS, SCORE_DIMS } from '@/types'
 import { ALL_SPEC_FIELDS, SPEC_GROUPS, formatSpecValue, getSpecValue, isEmptyValue } from '@/data/specSchema'
 import { useApp } from '@/store/AppStore'
 import { cn, daysSince, formatDate, formatPercent, formatWan, sourceHost, truncate } from '@/lib/format'
@@ -37,12 +40,21 @@ import { TabBar } from '@/components/ui/Field'
 import { ScoreRing, SourceBadge, StatusBadge, VehicleCover, VerificationBadge } from '@/components/vehicle/VehicleVisuals'
 import { VehicleFormModal } from '@/components/vehicle/VehicleFormModal'
 import { QuoteFormModal } from '@/components/price/QuoteFormModal'
+import { SalesFormModal } from '@/components/sales/SalesFormModal'
+import { ReviewFormModal } from '@/components/reviews/ReviewFormModal'
+import { ReviewPanel, StanceBadge } from '@/components/reviews/ReviewPanel'
+import { TestDrivePanel } from '@/components/testdrive/TestDrivePanel'
+import { SalesPanel } from '@/components/sales/SalesPanel'
+import { buildSalesMap, formatUnits, monthLabel } from '@/lib/sales'
 import { PriceTrendChart } from '@/components/charts/Charts'
 import { ConfirmDialog, Modal } from '@/components/ui/Modal'
 
 type DetailTab =
   | 'overview'
   | 'price'
+  | 'sales'
+  | 'review'
+  | 'testdrive'
   | 'basic'
   | 'powertrain'
   | 'body'
@@ -56,6 +68,9 @@ type DetailTab =
 const TAB_IDS: DetailTab[] = [
   'overview',
   'price',
+  'sales',
+  'review',
+  'testdrive',
   'basic',
   'powertrain',
   'body',
@@ -70,6 +85,9 @@ const TAB_IDS: DetailTab[] = [
 const TAB_LABELS: Record<DetailTab, string> = {
   overview: '概览',
   price: '价格',
+  sales: '销量',
+  review: '车评',
+  testdrive: '试驾',
   basic: '车款',
   powertrain: '三电',
   body: '空间',
@@ -276,13 +294,16 @@ function DataCompletenessCard({ vehicle, onEdit }: { vehicle: Vehicle; onEdit: (
 
 export function VehicleDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { data, priceMap, scoresResult, dispatch, toast } = useApp()
+  const { data, priceMap, scoresResult, salesMap, dispatch, toast } = useApp()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const vehicle = data.vehicles.find((v) => v.id === id)
   const [tab, setTab] = useState<DetailTab>('overview')
   const [editOpen, setEditOpen] = useState(false)
   const [quoteOpen, setQuoteOpen] = useState(false)
+  const [salesOpen, setSalesOpen] = useState(false)
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const [editingReview, setEditingReview] = useState<ReviewRecord | null>(null)
   const [editingQuote, setEditingQuote] = useState<PriceQuote | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [scoreDetailOpen, setScoreDetailOpen] = useState(false)
@@ -295,6 +316,8 @@ export function VehicleDetailPage() {
   const info = vehicle ? priceMap[vehicle.id] : null
   const score = vehicle ? scoresResult.scores[vehicle.id] : null
   const quotes = vehicle ? quotesForVehicle(data.quotes, vehicle.id) : []
+  const reviews = vehicle ? data.reviews.filter((review) => review.vehicleId === vehicle.id) : []
+  const testDrive = vehicle ? data.testDrives.find((item) => item.vehicleId === vehicle.id) : undefined
   const inCompare = vehicle ? data.compareIds.includes(vehicle.id) : false
 
   const lastVerified = useMemo(() => {
@@ -344,7 +367,7 @@ export function VehicleDetailPage() {
   }
 
   const editGroup: 'base' | 'notes' | 'options' | 'sources' | keyof Vehicle['specs'] =
-    tab === 'price' ? 'options' : tab === 'overview' ? 'base' : tab
+    tab === 'price' ? 'options' : tab === 'overview' ? 'base' : tab === 'sales' || tab === 'review' || tab === 'testdrive' ? 'notes' : tab
 
   return (
     <div className="space-y-5">
@@ -370,7 +393,8 @@ export function VehicleDetailPage() {
         <div className="grid lg:grid-cols-[1.15fr_1fr]">
           <div className="relative min-h-[230px]">
             <VehicleCover vehicle={vehicle} className="h-full min-h-[230px]" />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink-950/80 via-transparent to-transparent lg:bg-gradient-to-r" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink-950/92 via-ink-950/45 to-transparent" />
+            <div className="pointer-events-none absolute inset-0 hidden bg-gradient-to-r from-ink-950/85 via-ink-950/25 to-transparent lg:block" />
             <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-3 p-5">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -471,6 +495,9 @@ export function VehicleDetailPage() {
           icon:
             id === 'overview' ? <Car className="size-3.5" /> :
             id === 'price' ? <CircleDollarSign className="size-3.5" /> :
+            id === 'sales' ? <TrendingUp className="size-3.5" /> :
+            id === 'review' ? <MessageSquareQuote className="size-3.5" /> :
+            id === 'testdrive' ? <Gauge className="size-3.5" /> :
             id === 'notes' ? <StickyNote className="size-3.5" /> :
             id === 'sources' ? <Link2 className="size-3.5" /> :
             (() => {
@@ -502,7 +529,16 @@ export function VehicleDetailPage() {
                 <KeyValue label="0–100 km/h" value={`${vehicle.specs.powertrain.accel0100 ?? '待核实'}${vehicle.specs.powertrain.accel0100 ? ' s' : ''}`} />
                 <KeyValue label="快充" value={vehicle.specs.powertrain.fastChargeTimeMin ? `${vehicle.specs.powertrain.fastChargeTimeMin} min ${vehicle.specs.powertrain.fastChargeSoc}` : '待核实'} />
                 <KeyValue label="高压平台" value={vehicle.specs.powertrain.highVoltage || '待核实'} />
-                <KeyValue label="车身尺寸" value={vehicle.specs.body.length ? `${vehicle.specs.body.length}×${vehicle.specs.body.width}×${vehicle.specs.body.height} mm` : '待核实'} />
+                <KeyValue
+                  label="车身尺寸"
+                  value={
+                    vehicle.specs.body.length && vehicle.specs.body.width && vehicle.specs.body.height
+                      ? `${vehicle.specs.body.length}×${vehicle.specs.body.width}×${vehicle.specs.body.height} mm`
+                      : vehicle.specs.body.length
+                        ? `长 ${vehicle.specs.body.length} mm，宽高待核实`
+                        : '待核实'
+                  }
+                />
                 <KeyValue label="轴距" value={`${vehicle.specs.body.wheelbase ?? '待核实'}${vehicle.specs.body.wheelbase ? ' mm' : ''}`} />
                 <KeyValue label="后备厢 / 前备厢" value={`${vehicle.specs.body.trunkL ?? '—'} / ${vehicle.specs.body.frunkL ?? '—'} L`} />
                 <KeyValue label="悬架" value={truncate(`${vehicle.specs.chassis.frontSusp || '待核实'} / ${vehicle.specs.chassis.rearSusp || '待核实'}`, 28)} />
@@ -790,6 +826,131 @@ export function VehicleDetailPage() {
         </div>
       ) : null}
 
+      {tab === 'sales' ? (
+        <div className="grid gap-5 xl:grid-cols-[1.45fr_minmax(0,1fr)]">
+          <SalesPanel vehicle={vehicle} summary={salesMap[vehicle.id]} onEdit={() => setSalesOpen(true)} />
+
+          <div className="min-w-0 space-y-5">
+            <section className="panel p-4 sm:p-5">
+              <SectionTitle
+                title="同期累计对比"
+                description={`同一窗口内已录销量合计，窗口起点最早 ${monthLabel(salesMap[vehicle.id]?.windowStart ?? '2026-01')}。`}
+                action={<Badge tone="neutral">口径见下</Badge>}
+              />
+              <div className="mt-4 space-y-3">
+                {(() => {
+                  const rows = data.vehicles
+                    .map((item) => ({ vehicle: item, summary: salesMap[item.id] }))
+                    .sort((a, b) => (b.summary?.cumulative ?? -1) - (a.summary?.cumulative ?? -1))
+                  const max = Math.max(...rows.map((row) => row.summary?.cumulative ?? 0), 1)
+                  return rows.map((row) => (
+                    <Link
+                      key={row.vehicle.id}
+                      to={`/garage/${row.vehicle.id}?tab=sales`}
+                      className="block"
+                    >
+                      <div className="mb-1 flex items-center justify-between gap-3 text-[11px]">
+                        <span className={cn('truncate transition hover:text-accent', row.vehicle.id === vehicle.id ? 'text-accent' : 'text-mist-300')}>
+                          {row.vehicle.brand} {row.vehicle.model}
+                        </span>
+                        <span className="num shrink-0 text-mist-400">
+                          {row.summary?.hasData ? formatUnits(row.summary.cumulative) : '待核实'}
+                          {row.summary?.hasData && row.summary.coverage < 1 ? (
+                            <span className="ml-1 text-[9.5px] text-amber-200/70">{row.summary.recordedMonths}/{row.summary.expectedMonths} 月</span>
+                          ) : null}
+                        </span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-white/[0.04]">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${row.summary?.hasData ? Math.max(2, ((row.summary.cumulative ?? 0) / max) * 100) : 0}%`,
+                            background: row.vehicle.accent,
+                            opacity: row.vehicle.id === vehicle.id ? 1 : 0.55,
+                          }}
+                        />
+                      </div>
+                    </Link>
+                  ))
+                })()}
+              </div>
+            </section>
+
+            <section className="panel p-4 sm:p-5">
+              <SectionTitle title="口径说明" />
+              <ul className="mt-3 space-y-2 text-[10.5px] leading-5 text-mist-500">
+                <li>· 窗口 = 上市月与 2026-01 中较晚的一个 → 最新已公布月份；上市时间未知按 2026-01 起算。</li>
+                <li>· 累计 = 窗口内已录月份之和，缺数据的月份不计 0，覆盖度会标出缺几个月。</li>
+                <li>· 口径不统一：启源/比亚迪多为批发，深蓝用交付，乘联会榜为零售。跨车型比较只看量级。</li>
+                <li>· 单车型拆分通常滞后于品牌战报：品牌只报合计时，本工具保留「待核实」不估算。</li>
+              </ul>
+            </section>
+          </div>
+        </div>
+      ) : null}
+
+      {tab === 'testdrive' ? (
+        <TestDrivePanel
+          vehicle={vehicle}
+          drive={testDrive}
+          others={data.vehicles
+            .filter((item) => data.testDrives.some((drive) => drive.vehicleId === item.id))
+            .map((item) => ({
+              vehicle: item,
+              drive: data.testDrives.find((drive) => drive.vehicleId === item.id),
+            }))}
+          onOpen={(id) => navigate(`/garage/${id}?tab=testdrive`)}
+        />
+      ) : null}
+
+      {tab === 'review' ? (
+        <div className="grid gap-5 xl:grid-cols-[1.45fr_minmax(0,1fr)]">
+          <ReviewPanel
+            vehicle={vehicle}
+            reviews={reviews}
+            onEdit={(item) => {
+              setEditingReview(item)
+              setReviewOpen(true)
+            }}
+          />
+
+          <div className="min-w-0 space-y-5">
+            <section className="panel p-4 sm:p-5">
+              <SectionTitle title="结论对照" description="两个账号对同一台车的立场，冲突时以要点与试驾为准。" />
+              <div className="mt-4 space-y-2.5">
+                {REVIEW_CHANNELS.map((channel) => {
+                  const latest = reviews
+                    .filter((review) => review.channel === channel)
+                    .slice()
+                    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))[0]
+                  return (
+                    <div key={channel} className="rounded-xl border border-line/70 bg-white/[0.012] px-3 py-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-medium text-mist-200">{channel}</span>
+                        {latest ? <StanceBadge stance={latest.stance} /> : <Badge tone="neutral">未覆盖</Badge>}
+                      </div>
+                      <p className="mt-1.5 line-clamp-3 text-[10.5px] leading-4 text-mist-500">
+                        {latest?.summary || '暂无该账号对这款车的评价记录。'}
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+
+            <section className="panel p-4 sm:p-5">
+              <SectionTitle title="收录口径" />
+              <ul className="mt-3 space-y-2 text-[10.5px] leading-5 text-mist-500">
+                <li>· 只收「超哥超车」「蔚车情报局局长」两个账号，其它媒体不进这张表。</li>
+                <li>· 结论分五档：推荐 / 谨慎推荐 / 中立 / 劝退 / 未表态；一句话结论是转述，不是原话。</li>
+                <li>· 原话来自视频转录（Whisper small），可能有同音错字，核对以视频为准。</li>
+                <li>· 盘点类视频里的一段也会单独记一条，备注写清覆盖时长与是否含广告。</li>
+              </ul>
+            </section>
+          </div>
+        </div>
+      ) : null}
+
       {tab === 'notes' ? (
         <div className="grid gap-5 lg:grid-cols-2">
           <section className="panel p-4 sm:p-5">
@@ -990,6 +1151,24 @@ export function VehicleDetailPage() {
           setQuoteOpen(false)
           setEditingQuote(null)
         }}
+      />
+
+      <ReviewFormModal
+        open={reviewOpen}
+        vehicle={vehicle}
+        review={editingReview}
+        onClose={() => {
+          setReviewOpen(false)
+          setEditingReview(null)
+        }}
+      />
+
+      <SalesFormModal
+        open={salesOpen}
+        vehicle={vehicle}
+        records={data.sales.filter((record) => record.vehicleId === vehicle.id)}
+        windowEnd={salesMap[vehicle.id]?.windowEnd ?? '2026-10'}
+        onClose={() => setSalesOpen(false)}
       />
 
       <ConfirmDialog
