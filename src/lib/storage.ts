@@ -496,6 +496,37 @@ function fillSeedCovers(data: AppData): AppData {
   return changed ? { ...data, vehicles } : data
 }
 
+/**
+ * 老数据里 Q06 的手动分还是初始占位值（8.3/8.6/7.9/8.9/8.8/8.4/7.5）时，
+ * 一次性换成新口径（后排/续航/智驾上调）；用户自己改过的分数一律不动。
+ */
+const LEGACY_Q06_SCORES: Record<string, number> = {
+  price: 8.3,
+  adas: 8.6,
+  chassis: 7.9,
+  range: 8.9,
+  space: 8.8,
+  cockpit: 8.4,
+  brand: 7.5,
+}
+
+function migrateSeedScores(data: AppData): AppData {
+  const seed = seedData()
+  let changed = false
+  const vehicles = data.vehicles.map((vehicle) => {
+    if (vehicle.id !== 'v_q06') return vehicle
+    const untouched = Object.entries(LEGACY_Q06_SCORES).every(
+      ([dim, value]) => vehicle.manualScores[dim as keyof typeof vehicle.manualScores] === value,
+    )
+    if (!untouched) return vehicle
+    const next = seed.vehicles.find((item) => item.id === 'v_q06')
+    if (!next) return vehicle
+    changed = true
+    return { ...vehicle, manualScores: { ...next.manualScores } }
+  })
+  return changed ? { ...data, vehicles } : data
+}
+
 export interface LoadResult {
   data: AppData
   source: 'storage' | 'seed' | 'recovered'
@@ -528,7 +559,7 @@ export function loadData(): LoadResult {
         warning: `本地数据校验失败，已加载初始数据。原数据已尝试备份。${parsed.errors[0] ?? ''}`,
       }
     }
-    return { data: fillSeedCovers(parsed.data), source: 'storage' }
+    return { data: migrateSeedScores(fillSeedCovers(parsed.data)), source: 'storage' }
   } catch {
     return { data: seedData(), source: 'recovered', warning: '读取本地数据失败，已加载初始数据。' }
   }
