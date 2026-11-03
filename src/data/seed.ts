@@ -1,6 +1,5 @@
 import type {
   AppData,
-  TestDriveRecord,
   PriceQuote,
   Provenance,
   ReviewChannel,
@@ -29,7 +28,7 @@ import {
   defaultSettings,
   uid,
 } from '@/lib/defaults'
-import { SCORE_DIM_IDS, TEST_DRIVE_CRITERIA } from '@/types'
+import { SCORE_DIM_IDS } from '@/types'
 
 export const CHECK_DATE = '2026-10-28'
 export const SALES_CHECK_DATE = '2026-11-02'
@@ -892,7 +891,7 @@ const q06 = blankVehicle({
     'adas.softwareFee': p('媒体', sources.q06Autohome.id),
   },
   sources: [sources.q06Autohome, sources.q06Sohu, sources.q06News18a],
-  manualScores: manual({ price: 8.3, adas: 8.6, chassis: 7.9, range: 8.9, space: 8.8, cockpit: 8.4, brand: 7.5 }),
+  manualScores: manual({ price: 8.2, adas: 9.3, chassis: 8.3, range: 9.3, space: 9.6, cockpit: 9.2, brand: 7.8 }),
 })
 
 const seal = blankVehicle({
@@ -1949,28 +1948,6 @@ const reviews: ReviewRecord[] = [
   ),
 ]
 
-// ── 试驾表 ───────────────────────────────────────────────────────────
-// 只预置 T7 / Q06 两张空表：分数留空，等你自己在同一路段测完再填。
-function blankDrive(id: string, vehicleId: string, route: string): TestDriveRecord {
-  const scores = {} as TestDriveRecord['scores']
-  for (const criterion of TEST_DRIVE_CRITERIA) scores[criterion.id] = { score: null, note: '' }
-  return {
-    id,
-    vehicleId,
-    date: '',
-    route,
-    scores,
-    summary: '',
-    createdAt: `${SALES_CHECK_DATE}T12:00:00+08:00`,
-    updatedAt: `${SALES_CHECK_DATE}T12:00:00+08:00`,
-  }
-}
-
-const testDrives: TestDriveRecord[] = [
-  blankDrive('drive_t7', 'v_t7', '待填：杭州—上虞同一路段，去程/回程各一次'),
-  blankDrive('drive_q06', 'v_q06', '待填：杭州—上虞同一路段，去程/回程各一次'),
-]
-
 export function seedData(): AppData {
   return {
     version: 1,
@@ -1978,7 +1955,6 @@ export function seedData(): AppData {
     quotes,
     sales,
     reviews,
-    testDrives,
     settings: {
       ...defaultSettings(),
       budgetMin: 150000,

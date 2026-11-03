@@ -9,8 +9,7 @@ import { computeCost } from '@/lib/cost'
 import { SPEC_GROUPS, formatSpecValue } from '@/data/specSchema'
 import { formatUnits, monthLabel } from '@/lib/sales'
 import { truncate } from '@/lib/format'
-import { REVIEW_CHANNELS, TEST_DRIVE_CRITERIA } from '@/types'
-import { summarizeTestDrive } from '@/lib/testDrive'
+import { REVIEW_CHANNELS } from '@/types'
 import { Badge, Button, EmptyState, InfoTip, PageHeader, SectionTitle } from '@/components/ui/primitives'
 import { VehicleCover } from '@/components/vehicle/VehicleVisuals'
 import { downloadText, compareCsv } from '@/lib/csv'
@@ -50,7 +49,6 @@ const GROUPS = [
   '能耗与长期使用成本',
   '销量表现',
   '车评观点',
-  '试驾实测',
   '品牌、售后与质保',
   '保值率及未来二手车风险',
 ]
@@ -77,7 +75,6 @@ function isMissing(raw: unknown): boolean {
 export function ComparePage() {
   const { data, priceMap, scoresResult, salesMap, dispatch, toast } = useApp()
   const reviews = data.reviews
-  const testDrives = data.testDrives
   const [sort, setSort] = useState<SortKey>('manual')
   const [hideSame, setHideSame] = useState(false)
 
@@ -97,8 +94,8 @@ export function ComparePage() {
   }, [selected, sort, priceMap, scoresResult.scores])
 
   const rows = useMemo(
-    () => buildRows(ordered, priceMap, scoresResult.scores, data.settings, salesMap, reviews, testDrives),
-    [ordered, priceMap, scoresResult.scores, data.settings, salesMap, reviews, testDrives],
+    () => buildRows(ordered, priceMap, scoresResult.scores, data.settings, salesMap, reviews),
+    [ordered, priceMap, scoresResult.scores, data.settings, salesMap, reviews],
   )
   const visibleRows = useMemo(
     () => (hideSame ? rows.filter((row) => new Set(row.values.map((value) => value.display)).size > 1) : rows),
@@ -475,7 +472,6 @@ function buildRows(
   settings: ReturnType<typeof useApp>['data']['settings'],
   salesMap: ReturnType<typeof useApp>['salesMap'],
   reviews: ReviewRecord[],
-  testDrives: ReturnType<typeof useApp>['data']['testDrives'],
 ): CompareRow[] {
   const rows: CompareRow[] = []
 
@@ -750,29 +746,6 @@ function buildRows(
       'text',
     )
   }
-
-  const driveOf = (vehicle: Vehicle) => testDrives.find((drive) => drive.vehicleId === vehicle.id)
-
-  for (const criterion of TEST_DRIVE_CRITERIA) {
-    add(
-      '试驾实测',
-      criterion.label,
-      vehicles.map((v) => driveOf(v)?.scores[criterion.id]?.score ?? null),
-      'higher',
-      'number',
-      (value) => `${Number(value).toFixed(1)} / 5`,
-      criterion.hint,
-    )
-  }
-  add(
-    '试驾实测',
-    '试驾均分',
-    vehicles.map((v) => summarizeTestDrive(driveOf(v)).average),
-    'higher',
-    'number',
-    (value) => `${Number(value).toFixed(1)} / 5`,
-    '只对已评项目取均值；没有试驾记录显示「待核实」',
-  )
 
   spec('品牌、售后与质保', 'basic.warranty')
   spec('品牌、售后与质保', 'basic.serviceNetwork')

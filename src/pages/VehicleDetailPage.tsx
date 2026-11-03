@@ -21,7 +21,6 @@ import {
   TrendingDown,
   TrendingUp,
   TriangleAlert,
-  Gauge,
   MessageSquareQuote,
   Wrench,
   Zap,
@@ -43,7 +42,6 @@ import { QuoteFormModal } from '@/components/price/QuoteFormModal'
 import { SalesFormModal } from '@/components/sales/SalesFormModal'
 import { ReviewFormModal } from '@/components/reviews/ReviewFormModal'
 import { ReviewPanel, StanceBadge } from '@/components/reviews/ReviewPanel'
-import { TestDrivePanel } from '@/components/testdrive/TestDrivePanel'
 import { SalesPanel } from '@/components/sales/SalesPanel'
 import { buildSalesMap, formatUnits, monthLabel } from '@/lib/sales'
 import { PriceTrendChart } from '@/components/charts/Charts'
@@ -54,7 +52,6 @@ type DetailTab =
   | 'price'
   | 'sales'
   | 'review'
-  | 'testdrive'
   | 'basic'
   | 'powertrain'
   | 'body'
@@ -70,7 +67,6 @@ const TAB_IDS: DetailTab[] = [
   'price',
   'sales',
   'review',
-  'testdrive',
   'basic',
   'powertrain',
   'body',
@@ -87,7 +83,6 @@ const TAB_LABELS: Record<DetailTab, string> = {
   price: '价格',
   sales: '销量',
   review: '车评',
-  testdrive: '试驾',
   basic: '车款',
   powertrain: '三电',
   body: '空间',
@@ -317,7 +312,6 @@ export function VehicleDetailPage() {
   const score = vehicle ? scoresResult.scores[vehicle.id] : null
   const quotes = vehicle ? quotesForVehicle(data.quotes, vehicle.id) : []
   const reviews = vehicle ? data.reviews.filter((review) => review.vehicleId === vehicle.id) : []
-  const testDrive = vehicle ? data.testDrives.find((item) => item.vehicleId === vehicle.id) : undefined
   const inCompare = vehicle ? data.compareIds.includes(vehicle.id) : false
 
   const lastVerified = useMemo(() => {
@@ -367,7 +361,7 @@ export function VehicleDetailPage() {
   }
 
   const editGroup: 'base' | 'notes' | 'options' | 'sources' | keyof Vehicle['specs'] =
-    tab === 'price' ? 'options' : tab === 'overview' ? 'base' : tab === 'sales' || tab === 'review' || tab === 'testdrive' ? 'notes' : tab
+    tab === 'price' ? 'options' : tab === 'overview' ? 'base' : tab === 'sales' || tab === 'review' ? 'notes' : tab
 
   return (
     <div className="space-y-5">
@@ -497,7 +491,6 @@ export function VehicleDetailPage() {
             id === 'price' ? <CircleDollarSign className="size-3.5" /> :
             id === 'sales' ? <TrendingUp className="size-3.5" /> :
             id === 'review' ? <MessageSquareQuote className="size-3.5" /> :
-            id === 'testdrive' ? <Gauge className="size-3.5" /> :
             id === 'notes' ? <StickyNote className="size-3.5" /> :
             id === 'sources' ? <Link2 className="size-3.5" /> :
             (() => {
@@ -887,20 +880,6 @@ export function VehicleDetailPage() {
             </section>
           </div>
         </div>
-      ) : null}
-
-      {tab === 'testdrive' ? (
-        <TestDrivePanel
-          vehicle={vehicle}
-          drive={testDrive}
-          others={data.vehicles
-            .filter((item) => data.testDrives.some((drive) => drive.vehicleId === item.id))
-            .map((item) => ({
-              vehicle: item,
-              drive: data.testDrives.find((drive) => drive.vehicleId === item.id),
-            }))}
-          onOpen={(id) => navigate(`/garage/${id}?tab=testdrive`)}
-        />
       ) : null}
 
       {tab === 'review' ? (

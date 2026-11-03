@@ -1,5 +1,4 @@
-import type { PriceQuote, ReviewRecord, SalesRecord, SalesSummary, TestDriveRecord, Vehicle, VehiclePriceInfo } from '@/types'
-import { TEST_DRIVE_CRITERIA } from '@/types'
+import type { PriceQuote, ReviewRecord, SalesRecord, SalesSummary, Vehicle, VehiclePriceInfo } from '@/types'
 import type { ScoreResult } from '@/types'
 import { quotesForVehicle } from '@/lib/price'
 import { vehicleName } from '@/lib/analytics'
@@ -185,25 +184,6 @@ export function reviewsCsv(vehicles: Vehicle[], reviews: ReviewRecord[]): string
     ['车型', '账号', '结论', '标题', '一句话结论', '要点', '原话', '发布日期', '链接', '备注', '可信度'],
     ...rows,
   ])
-}
-
-export function testDrivesCsv(vehicles: Vehicle[], drives: TestDriveRecord[]): string {
-  const byId = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]))
-  const headers = ['车型', '试驾日期', '路段', ...TEST_DRIVE_CRITERIA.map((c) => `${c.label}(0-5)`), '备注', '一句话结论']
-  const rows = drives.map((drive) => {
-    const vehicle = byId.get(drive.vehicleId)
-    const scores = TEST_DRIVE_CRITERIA.map((c) => drive.scores[c.id]?.score ?? '')
-    const notes = TEST_DRIVE_CRITERIA.map((c) => drive.scores[c.id]?.note).filter(Boolean).join(' / ')
-    return [
-      vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.trim}`.trim() : drive.vehicleId,
-      drive.date,
-      drive.route,
-      ...scores,
-      notes,
-      drive.summary,
-    ]
-  })
-  return toCsv([headers, ...rows])
 }
 
 export function costCsv(

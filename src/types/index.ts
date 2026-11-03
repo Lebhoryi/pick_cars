@@ -420,45 +420,12 @@ export interface ScoringState {
   snapshots: RankSnapshot[]
 }
 
-// ── 试驾实测 ──────────────────────────────────────────────────────────
-// 一张表 = 一台车在一次同路段试驾里的 5 项打分（0–5，0.5 步进）+ 单项备注。
-export const TEST_DRIVE_CRITERIA = [
-  { id: 'nvh', label: '高速噪声 80–120km/h', hint: '风噪/胎噪/电机啸叫；同一路段、同一车速区间对比' },
-  { id: 'bodyRoll', label: '高速变道侧倾与支撑', hint: '80–120km/h 变道，车身回正速度、悬架支撑' },
-  { id: 'bump', label: '减速带前后排震动', hint: '20km/h 过减速带，前后排跳动与余震' },
-  { id: 'rearSeat', label: '后排久坐舒适度', hint: '后排坐 30 分钟以上：靠背角度、坐垫长度、腿托' },
-  { id: 'adas', label: '智驾实测表现', hint: '高速领航、变道、匝道、加塞处理，按实际开通版本测' },
-] as const
-
-export type TestDriveCriterionId = (typeof TEST_DRIVE_CRITERIA)[number]['id']
-
-export interface TestDriveScore {
-  /** 0–5，null 表示还没测 */
-  score: number | null
-  note: string
-}
-
-export interface TestDriveRecord {
-  id: ID
-  vehicleId: ID
-  /** YYYY-MM-DD */
-  date: string
-  /** 试驾路线/路段说明 */
-  route: string
-  scores: Record<TestDriveCriterionId, TestDriveScore>
-  /** 一句话结论 */
-  summary: string
-  createdAt: string
-  updatedAt: string
-}
-
 export interface AppData {
   version: number
   vehicles: Vehicle[]
   quotes: PriceQuote[]
   sales: SalesRecord[]
   reviews: ReviewRecord[]
-  testDrives: TestDriveRecord[]
   settings: AppSettings
   scoring: ScoringState
   compareIds: ID[]
@@ -476,6 +443,8 @@ export interface ScoreResult {
       weight: number
       effectiveWeight: number
       source: 'manual' | 'auto' | 'none'
+      /** 自动模式下 auto 数据缺失，已回落手动分 */
+      fellBack?: boolean
       basis?: string
       criteria?: Array<{ label: string; met: boolean; available: boolean; detail: string }>
       missing?: string[]

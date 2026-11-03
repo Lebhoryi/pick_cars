@@ -18,7 +18,6 @@ import type {
   ReviewRecord,
   SalesRecord,
   SalesSummary,
-  TestDriveRecord,
   ScoringState,
   Vehicle,
 } from '@/types'
@@ -39,8 +38,6 @@ export type AppAction =
   | { type: 'DELETE_SALES'; id: string }
   | { type: 'UPSERT_REVIEW'; review: ReviewRecord }
   | { type: 'DELETE_REVIEW'; id: string }
-  | { type: 'UPSERT_TEST_DRIVE'; drive: TestDriveRecord }
-  | { type: 'DELETE_TEST_DRIVE'; id: string }
   | { type: 'SET_SETTINGS'; settings: AppSettings }
   | { type: 'SET_SCORING'; scoring: ScoringState }
   | { type: 'SET_COMPARE_IDS'; ids: string[] }
@@ -69,7 +66,6 @@ function reducer(state: AppData, action: AppAction): AppData {
         quotes: state.quotes.filter((q) => q.vehicleId !== action.id),
         sales: state.sales.filter((s) => s.vehicleId !== action.id),
         reviews: state.reviews.filter((r) => r.vehicleId !== action.id),
-        testDrives: state.testDrives.filter((d) => d.vehicleId !== action.id),
         compareIds: state.compareIds.filter((id) => id !== action.id),
         scoring: {
           ...state.scoring,
@@ -111,16 +107,6 @@ function reducer(state: AppData, action: AppAction): AppData {
     }
     case 'DELETE_REVIEW':
       return { ...state, reviews: state.reviews.filter((r) => r.id !== action.id) }
-    case 'UPSERT_TEST_DRIVE': {
-      const drive = { ...action.drive, updatedAt: new Date().toISOString() }
-      const exists = state.testDrives.some((d) => d.id === drive.id)
-      return {
-        ...state,
-        testDrives: exists ? state.testDrives.map((d) => (d.id === drive.id ? drive : d)) : [...state.testDrives, drive],
-      }
-    }
-    case 'DELETE_TEST_DRIVE':
-      return { ...state, testDrives: state.testDrives.filter((d) => d.id !== action.id) }
     case 'SET_SETTINGS':
       return { ...state, settings: action.settings }
     case 'SET_SCORING':
@@ -152,7 +138,6 @@ function reducer(state: AppData, action: AppAction): AppData {
         quotes: [],
         sales: [],
         reviews: [],
-        testDrives: [],
         compareIds: [],
         scoring: { ...state.scoring, snapshots: [] },
       }

@@ -505,7 +505,11 @@ export function computeScore(
   for (const dim of SCORE_DIMS) {
     const autoDim = auto?.[dim.id]
     const manualScore = vehicle.manualScores[dim.id]
-    const score = mode === 'manual' ? manualScore : (autoDim?.score ?? null)
+    const autoScore = isNum(autoDim?.score) ? (autoDim?.score ?? null) : null
+    // 自动模式：自动分可用就用自动分，缺失时回落到手动分（来源会标注为「手动回落」），
+    // 这样任何一台车都不会因为某个维度缺数据而丢分、把排名打乱。
+    const fellBack = mode === 'auto' && autoScore === null && isNum(manualScore)
+    const score = mode === 'manual' ? manualScore : (autoScore ?? manualScore ?? null)
     const available = isNum(score)
     if (available) {
       weightedSum += score * normalized[dim.id]
@@ -515,12 +519,15 @@ export function computeScore(
       score: available ? score : null,
       weight: normalized[dim.id],
       effectiveWeight: available ? normalized[dim.id] / Math.max(availableWeight, 1e-9) : 0,
-      source: available ? mode : 'none',
-      basis: mode === 'auto' ? autoDim?.basis : undefined,
-      criteria: mode === 'auto' ? autoDim?.criteria : undefined,
+      source: available ? (mode === 'manual' || fellBack ? 'manual' : 'auto') : 'none',
+      fellBack,
+      basis: mode === 'auto' && !fellBack ? autoDim?.basis : undefined,
+      criteria: mode === 'auto' && !fellBack ? autoDim?.criteria : undefined,
       missing:
         mode === 'auto'
-          ? (autoDim?.missing ?? [])
+          ? fellBack
+            ? ['自动数据不足，已回落手动分']
+            : (autoDim?.missing ?? [])
           : !available
             ? ['尚未手动评分']
             : [],

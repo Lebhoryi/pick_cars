@@ -95,7 +95,7 @@ export function ScorePage() {
 
   const setMode = (mode: 'manual' | 'auto') => {
     dispatch({ type: 'SET_SCORING', scoring: { ...data.scoring, mode } })
-    toast(mode === 'manual' ? '已切换为手动评分' : '已切换为自动评分：缺失维度会标记为信息不足', 'info')
+    toast(mode === 'manual' ? '已切换为手动评分' : '已切换为自动评分：参数不足的维度会自动回落到手动分', 'info')
   }
 
   const updateFilters = (patch: Partial<typeof data.settings.hardFilters>) => {
@@ -439,7 +439,15 @@ export function ScorePage() {
                                       </div>
                                       <div className="mt-1 flex items-center justify-between text-[9px] text-mist-500">
                                         <span>有效权重 {(item.effectiveWeight * 100).toFixed(0)}%</span>
-                                        <span>{item.source === 'manual' ? '手动' : item.source === 'auto' ? '自动' : '缺失'}</span>
+                                        <span>
+                                          {item.source === 'none'
+                                            ? '缺失'
+                                            : item.fellBack
+                                              ? '手动回落'
+                                              : item.source === 'manual'
+                                                ? '手动'
+                                                : '自动'}
+                                        </span>
                                       </div>
                                       {item.basis ? <p className="mt-2 text-[9.5px] leading-4 text-mist-500">{item.basis}</p> : null}
                                       {data.scoring.mode === 'auto' && autoDim ? (
@@ -557,7 +565,7 @@ export function ScorePage() {
             <section className="panel p-4 sm:p-5">
               <SectionTitle
                 title="自动评分说明"
-                description="自动评分按可核对的参数与门槛折算，缺失项不计入分母。"
+                description="自动评分按可核对的参数与门槛折算；某维度缺数据时自动回落到手动分（标注「手动回落」），不会因为缺数据丢分。"
                 action={<Sparkles className="size-4 text-accent" />}
               />
               <div className="mt-4 grid gap-3 sm:grid-cols-2">

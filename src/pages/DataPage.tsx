@@ -22,7 +22,7 @@ import {
   storageUsage,
   type ValidationResult,
 } from '@/lib/storage'
-import { reviewsCsv, salesCsv, testDrivesCsv, vehiclesCsv, downloadText } from '@/lib/csv'
+import { reviewsCsv, salesCsv, vehiclesCsv, downloadText } from '@/lib/csv'
 import { dataCompleteness } from '@/lib/analytics'
 import { Badge, Button, PageHeader, SectionTitle } from '@/components/ui/primitives'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
@@ -51,16 +51,6 @@ export function DataPage() {
     const content = reviewsCsv(data.vehicles, data.reviews)
     downloadText(`carfleet-reviews-${new Date().toISOString().slice(0, 10)}.csv`, content, 'text/csv;charset=utf-8')
     toast('车评记录已导出 CSV', 'success')
-  }
-
-  const exportTestDriveCsv = () => {
-    if (data.testDrives.length === 0) {
-      toast('还没有试驾记录可导出。', 'warning')
-      return
-    }
-    const content = testDrivesCsv(data.vehicles, data.testDrives)
-    downloadText(`carfleet-testdrive-${new Date().toISOString().slice(0, 10)}.csv`, content, 'text/csv;charset=utf-8')
-    toast('试驾记录已导出 CSV', 'success')
   }
 
   const exportJson = () => {
@@ -134,9 +124,6 @@ export function DataPage() {
             <Button variant="secondary" icon={FileSpreadsheet} onClick={exportReviewsCsv}>
               导出车评 CSV
             </Button>
-            <Button variant="secondary" icon={FileSpreadsheet} onClick={exportTestDriveCsv}>
-              导出试驾 CSV
-            </Button>
             <Button variant="primary" icon={Download} onClick={exportJson}>
               导出完整 JSON
             </Button>
@@ -144,13 +131,12 @@ export function DataPage() {
         }
       />
 
-      <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-7">
+      <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-6">
         {[
           { label: '车型', value: data.vehicles.length, sub: '含重点候选 ' + data.vehicles.filter((v) => v.keyCandidate).length, icon: Database },
           { label: '报价记录', value: quoteCount, sub: '跨车型时间点', icon: FileJson },
           { label: '销量记录', value: data.sales.length, sub: '按车型×月份', icon: FileJson },
           { label: '车评', value: data.reviews.length, sub: '两个账号 × 车型', icon: FileJson },
-          { label: '试驾表', value: data.testDrives.length, sub: '5 项打分 / 车', icon: FileJson },
           { label: '来源链接', value: sourceCount, sub: `官方字段 ${officialCount} 项`, icon: CheckCircle2 },
           { label: '本地占用', value: formatBytes(usage), sub: `约 ${progress.toFixed(0)}% / 5 MB 估算上限`, icon: HardDrive },
         ].map((item) => (

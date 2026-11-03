@@ -7,14 +7,12 @@ import type {
   ReviewRecord,
   SalesRecord,
   ScoringState,
-  TestDriveRecord,
   SourceRef,
   Vehicle,
   VehicleSpecs,
 } from '@/types'
 import {
   FOCUS_STATUSES,
-  TEST_DRIVE_CRITERIA,
   REVIEW_CHANNELS,
   REVIEW_STANCES,
   SALES_SCOPES,
@@ -312,43 +310,6 @@ function normalizeReviews(
   }
 }
 
-function normalizeTestDrives(
-  raw: unknown,
-  index: number,
-  vehicleIds: Set<string>,
-  warnings: string[],
-): TestDriveRecord | null {
-  if (!isRecord(raw)) {
-    warnings.push(`第 ${index + 1} 条试驾记录不是对象，已跳过`)
-    return null
-  }
-  const vehicleId = str(raw.vehicleId)
-  if (!vehicleIds.has(vehicleId)) {
-    warnings.push(`第 ${index + 1} 条试驾记录引用了不存在的车型（${vehicleId || '空'}），已跳过`)
-    return null
-  }
-  const rawScores = isRecord(raw.scores) ? raw.scores : {}
-  const scores = {} as TestDriveRecord['scores']
-  for (const criterion of TEST_DRIVE_CRITERIA) {
-    const item = isRecord(rawScores[criterion.id]) ? (rawScores[criterion.id] as Rec) : {}
-    const score = numOrNull(item.score)
-    scores[criterion.id] = {
-      score: score === null ? null : clamp(score, 0, 5),
-      note: str(item.note),
-    }
-  }
-  return {
-    id: str(raw.id) || uid('drive'),
-    vehicleId,
-    date: str(raw.date) || todayISO(),
-    route: str(raw.route),
-    scores,
-    summary: str(raw.summary),
-    createdAt: str(raw.createdAt) || new Date().toISOString(),
-    updatedAt: str(raw.updatedAt) || new Date().toISOString(),
-  }
-}
-
 function normalizeSettings(value: unknown): AppSettings {
   const d = defaultSettings()
   if (!isRecord(value)) return d
@@ -477,10 +438,6 @@ export function validateAndNormalize(raw: unknown): ValidationResult {
   const reviews = rawReviews
     .map((r, index) => normalizeReviews(r, index, ids, warnings))
     .filter((r): r is ReviewRecord => r !== null)
-  const rawDrives = Array.isArray(raw.testDrives) ? raw.testDrives : []
-  const testDrives = rawDrives
-    .map((item, index) => normalizeTestDrives(item, index, ids, warnings))
-    .filter((item): item is TestDriveRecord => item !== null)
   const compareIds = Array.isArray(raw.compareIds)
     ? raw.compareIds.filter((id): id is string => typeof id === 'string' && ids.has(id))
     : []
@@ -498,7 +455,6 @@ export function validateAndNormalize(raw: unknown): ValidationResult {
       quotes,
       sales,
       reviews,
-      testDrives,
       settings,
       scoring,
       compareIds,
@@ -628,17 +584,12 @@ export function mergeData(current: AppData, incoming: AppData): AppData {
     current.reviews.filter((r) => validIds.has(r.vehicleId)).map((r) => [r.id, r]),
   )
   for (const review of incoming.reviews) if (validIds.has(review.vehicleId)) reviewById.set(review.id, review)
-  const driveByVehicle = new Map(
-    current.testDrives.filter((d) => validIds.has(d.vehicleId)).map((d) => [d.vehicleId, d]),
-  )
-  for (const drive of incoming.testDrives) if (validIds.has(drive.vehicleId)) driveByVehicle.set(drive.vehicleId, drive)
   return {
     version: APP_VERSION,
     vehicles,
     quotes: Array.from(quoteById.values()),
     sales: dedupeSales(Array.from(salesByKey.values())),
     reviews: Array.from(reviewById.values()),
-    testDrives: Array.from(driveByVehicle.values()),
     settings: incoming.settings,
     scoring: incoming.scoring,
     compareIds: Array.from(new Set([...current.compareIds, ...incoming.compareIds])).filter((id) => validIds.has(id)),
