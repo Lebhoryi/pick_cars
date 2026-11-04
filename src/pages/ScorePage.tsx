@@ -27,7 +27,7 @@ import {
   rankDelta,
 } from '@/lib/score'
 import { Badge, Button, EmptyState, InfoTip, PageHeader, ProgressBar, SectionTitle } from '@/components/ui/primitives'
-import { MoneyInput, NumberInput, Segmented, SliderField, Toggle } from '@/components/ui/Field'
+import { MoneyInput, NumberInput, SliderField, Toggle } from '@/components/ui/Field'
 import { vehicleName } from '@/lib/analytics'
 
 function scoreTone(value: number | null): string {
@@ -91,11 +91,6 @@ export function ScorePage() {
     const defaults = Object.fromEntries(SCORE_DIMS.map((dim) => [dim.id, dim.defaultWeight])) as Record<ScoreDimId, number>
     dispatch({ type: 'SET_SCORING', scoring: { ...data.scoring, weights: defaults } })
     toast('已恢复默认权重', 'info')
-  }
-
-  const setMode = (mode: 'manual' | 'auto') => {
-    dispatch({ type: 'SET_SCORING', scoring: { ...data.scoring, mode } })
-    toast(mode === 'manual' ? '已切换为手动评分' : '已切换为自动评分：参数不足的维度会自动回落到手动分', 'info')
   }
 
   const updateFilters = (patch: Partial<typeof data.settings.hardFilters>) => {
@@ -170,20 +165,15 @@ export function ScorePage() {
               <Badge tone="teal">100%</Badge>
             </div>
 
-            <div className="mt-4">
-              <Segmented
-                value={data.scoring.mode}
-                onChange={setMode}
-                options={[
-                  { value: 'manual', label: '手动评分' },
-                  { value: 'auto', label: '自动评分' },
-                ]}
-                className="w-full"
-              />
-              <p className="mt-2 text-[10px] leading-4 text-mist-500">
-                {data.scoring.mode === 'manual'
-                  ? '手动模式：直接填写 7 个维度的分数，适合已试驾、有主观判断的车型。'
-                  : '自动模式：根据参数与来源自动折算分数，并在展开行展示评分依据。'}
+            <div className="mt-4 rounded-lg border border-line/70 bg-white/[0.015] px-3 py-2">
+              <div className="flex items-center gap-2 text-[11px] font-medium text-mist-200">
+                <Badge tone="teal" dot>
+                  个人手动评分
+                </Badge>
+                <span className="text-[10px] font-normal text-mist-500">唯一排序依据</span>
+              </div>
+              <p className="mt-1.5 text-[10px] leading-4 text-mist-500">
+                你的分数就是结论：7 个维度直接填 0–10 分，留空的维度按权重剔除，不按 0 分算。
               </p>
             </div>
 
@@ -307,7 +297,7 @@ export function ScorePage() {
               <div>
                 <h2 className="text-sm font-semibold text-mist-100">评分排名</h2>
                 <p className="mt-0.5 text-[10px] text-mist-500">
-                  点击行末箭头查看自动评分依据；排名升降对比最近快照。
+                  点击行末箭头查看该车的参数依据；排名升降对比最近快照。
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -481,7 +471,7 @@ export function ScorePage() {
                               </div>
                               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[9.5px] text-mist-500">
                                 <span>
-                                  依据来自车型参数与来源标注；缺失数据不按 0 分计。自动评分仅为辅助，不替代试驾。
+                                  依据来自车型参数与来源标注；缺失数据不按 0 分计，也不会被当作 0 拉低排名。
                                 </span>
                                 <Link to={`/garage/${vehicle.id}?tab=sources`} className="inline-flex items-center gap-1 text-mist-400 hover:text-accent">
                                   查看字段来源 <ArrowUpRight className="size-3" />
@@ -505,7 +495,7 @@ export function ScorePage() {
             </div>
           </section>
 
-          {data.scoring.mode === 'manual' ? (
+          {(
             <section className="panel p-4 sm:p-5">
               <SectionTitle
                 title="手动评分录入"
@@ -561,35 +551,8 @@ export function ScorePage() {
                 评分会自动保存。建议每次试驾后只调整有把握的维度，并在车型笔记中记录理由，避免分数变成拍脑袋。
               </p>
             </section>
-          ) : (
-            <section className="panel p-4 sm:p-5">
-              <SectionTitle
-                title="自动评分说明"
-                description="自动评分按可核对的参数与门槛折算；某维度缺数据时自动回落到手动分（标注「手动回落」），不会因为缺数据丢分。"
-                action={<Sparkles className="size-4 text-accent" />}
-              />
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {SCORE_DIMS.map((dim) => {
-                  const sample = data.vehicles.find((v) => auto[v.id]?.[dim.id]?.score != null)
-                  const autoDim = sample ? auto[sample.id]?.[dim.id] : null
-                  return (
-                    <div key={dim.id} className="rounded-xl border border-line/70 bg-white/[0.012] p-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-medium text-mist-200">{dim.label}</span>
-                        <span className="text-[9px] text-mist-500">权重 {(normalized[dim.id] * 100).toFixed(0)}%</span>
-                      </div>
-                      <p className="mt-1 text-[9.5px] leading-4 text-mist-500">{dim.description}</p>
-                      {autoDim ? (
-                        <p className="mt-1.5 text-[9px] leading-4 text-mist-400">
-                          {autoDim.basis} 覆盖 {Math.round(autoDim.coverage * 100)}%
-                        </p>
-                      ) : null}
-                    </div>
-                  )
-                })}
-              </div>
-            </section>
           )}
+
 
           {/* SNAPSHOTS */}
           <section className="panel p-4 sm:p-5">

@@ -386,7 +386,8 @@ function normalizeScoring(value: unknown, vehicleIds: Set<string>): ScoringState
     }
   }
   return {
-    mode: value.mode === 'auto' ? 'auto' : 'manual',
+    // 自动评分模式已下线（排序只认个人手动分），老数据一律归到 manual
+    mode: 'manual',
     weights,
     snapshots: Array.isArray(value.snapshots)
       ? value.snapshots
