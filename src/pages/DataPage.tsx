@@ -8,6 +8,7 @@ import {
   FileSpreadsheet,
   HardDrive,
   RotateCcw,
+  ClipboardPaste,
   Trash2,
   Upload,
 } from 'lucide-react'
@@ -23,6 +24,7 @@ import {
   type ValidationResult,
 } from '@/lib/storage'
 import { reviewsCsv, salesCsv, vehiclesCsv, downloadText } from '@/lib/csv'
+import { SalesImportModal } from '@/components/sales/SalesImportModal'
 import { dataCompleteness } from '@/lib/analytics'
 import { Badge, Button, PageHeader, SectionTitle } from '@/components/ui/primitives'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
@@ -32,6 +34,7 @@ export function DataPage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [pending, setPending] = useState<(ValidationResult & { fileName: string }) | null>(null)
   const [importOpen, setImportOpen] = useState(false)
+  const [dcdOpen, setDcdOpen] = useState(false)
   const [confirm, setConfirm] = useState<'reset' | 'clear' | null>(null)
 
   const usage = storageUsage()
@@ -120,6 +123,9 @@ export function DataPage() {
             </Button>
             <Button variant="secondary" icon={FileSpreadsheet} onClick={exportSalesCsv}>
               导出销量 CSV
+            </Button>
+            <Button variant="secondary" icon={ClipboardPaste} onClick={() => setDcdOpen(true)}>
+              从懂车帝导入销量
             </Button>
             <Button variant="secondary" icon={FileSpreadsheet} onClick={exportReviewsCsv}>
               导出车评 CSV
@@ -326,6 +332,8 @@ export function DataPage() {
           </div>
         </div>
       </section>
+
+      <SalesImportModal open={dcdOpen} onClose={() => setDcdOpen(false)} />
 
       <Modal
         open={importOpen}
