@@ -536,18 +536,81 @@ function migrateSeedScores(data: AppData): AppData {
 const LEGACY_SALES_SOURCES = ['盖世汽车', '太平洋汽车', '深蓝官方', '比亚迪官方', '长安启源官方', '极狐官方', '大众官方', '零跑官方', '名爵官方']
 
 function migrateSalesToAutolink(data: AppData): AppData {
-  if (data.sales.length === 0) return data
   const seed = seedData()
-  const legacyIds = new Set(seed.sales.map((sale) => sale.vehicleId))
+  const seedVehicleIds = new Set(seed.sales.map((sale) => sale.vehicleId))
+
+  // 情况一：本地一条销量都没有 → 直接灌 seed
+  if (data.sales.length === 0) {
+    return seed.sales.length > 0 ? { ...data, sales: [...seed.sales] } : data
+  }
+
+  // 情况二：存在旧来源（盖世/太平洋/官方战报）→ 整体替换
   const isLegacy = data.sales.some(
     (sale) =>
-      legacyIds.has(sale.vehicleId) &&
+      seedVehicleIds.has(sale.vehicleId) &&
       LEGACY_SALES_SOURCES.some((label) => sale.sourceLabel.includes(label)),
   )
-  if (!isLegacy) return data
-  // 保留用户自己加过的（车型不在 seed 里的）记录，其余整体替换
-  const userAdded = data.sales.filter((sale) => !legacyIds.has(sale.vehicleId))
-  return { ...data, sales: [...seed.sales, ...userAdded] }
+  // 情况三：本地有销量，但某些 seed 车型一条都没有（新加的车型）→ 补齐
+  const localVehicleIds = new Set(data.sales.map((sale) => sale.vehicleId))
+  const missingVehicles = [...seedVehicleIds].filter((id) => !localVehicleIds.has(id))
+
+  if (!isLegacy && missingVehicles.length === 0) return data
+
+  // 保留用户自己加过的（车型不在 seed 里的）记录
+  const userAdded = data.sales.filter((sale) => !seedVehicleIds.has(sale.vehicleId))
+  const base = isLegacy ? [] : data.sales.filter((sale) => seedVehicleIds.has(sale.vehicleId))
+  const filled = isLegacy ? [...seed.sales] : [...base, ...seed.sales.filter((sale) => missingVehicles.includes(sale.vehicleId))]
+  return { ...data, sales: [...filled, ...userAdded] }
+}
+
+/**
+ * 车型库与 seed 对齐（2026-11-10）：
+ * - 删掉 seed 里已移除的车型（如银河 TT），连带清掉它的报价/销量/车评/对比选择
+ * - 补上 seed 新增的车型（如领克 08 EM-P）
+ * 用户自己新建的车型（id 不在 seed 也不在「已移除名单」里）一律保留。
+ */
+const REMOVED_SEED_VEHICLE_IDS = new Set(['v_tt'])
+
+function syncSeedVehicles(data: AppData): AppData {
+  const seed = seedData()
+  const seedIds = new Set(seed.vehicles.map((vehicle) => vehicle.id))
+  const localIds = new Set(data.vehicles.map((vehicle) => vehicle.id))
+
+  const removed = data.vehicles.filter((vehicle) => REMOVED_SEED_VEHICLE_IDS.has(vehicle.id))
+  const missing = seed.vehicles.filter((vehicle) => !localIds.has(vehicle.id))
+  if (removed.length === 0 && missing.length === 0) return data
+
+  const removedIds = new Set(removed.map((vehicle) => vehicle.id))
+  const vehicles = [...data.vehicles.filter((vehicle) => !removedIds.has(vehicle.id)), ...missing]
+
+  // 新补的车型要带上 seed 里的报价与销量
+  const newIds = new Set(missing.map((vehicle) => vehicle.id))
+  const quotes = [...data.quotes.filter((quote) => !removedIds.has(quote.vehicleId)), ...seed.quotes.filter((quote) => newIds.has(quote.vehicleId))]
+  const sales = [...data.sales.filter((sale) => !removedIds.has(sale.vehicleId)), ...seed.sales.filter((sale) => newIds.has(sale.vehicleId))]
+  const reviews = [
+    ...data.reviews.filter((review) => !removedIds.has(review.vehicleId)),
+    ...seed.reviews.filter((review) => newIds.has(review.vehicleId)),
+  ]
+
+  return {
+    ...data,
+    vehicles,
+    quotes,
+    sales,
+    reviews,
+    compareIds: data.compareIds.filter((id) => !removedIds.has(id)),
+    scoring: {
+      ...data.scoring,
+      snapshots: data.scoring.snapshots
+        .map((snapshot) => ({
+          ...snapshot,
+          entries: snapshot.entries.filter(
+            (row) => !removedIds.has(row.vehicleId) && (seedIds.has(row.vehicleId) || localIds.has(row.vehicleId)),
+          ),
+        }))
+        .filter((snapshot) => snapshot.entries.length > 0),
+    },
+  }
 }
 
 export interface LoadResult {
@@ -582,7 +645,10 @@ export function loadData(): LoadResult {
         warning: `本地数据校验失败，已加载初始数据。原数据已尝试备份。${parsed.errors[0] ?? ''}`,
       }
     }
-    return { data: migrateSalesToAutolink(migrateSeedScores(fillSeedCovers(parsed.data))), source: 'storage' }
+    return {
+      data: syncSeedVehicles(migrateSalesToAutolink(migrateSeedScores(fillSeedCovers(parsed.data)))),
+      source: 'storage',
+    }
   } catch {
     return { data: seedData(), source: 'recovered', warning: '读取本地数据失败，已加载初始数据。' }
   }
