@@ -454,8 +454,8 @@ export function OverviewPage() {
 
       <ChartFrame
         title="2026 销量对比"
-        description="窗口 = 上市月与 2026-01 中较晚者 → 最新已公布月份。柱尾百分比是数据覆盖度，缺数据的月份不按 0 计。"
-        action={<Badge tone="amber">口径混用 · 只看量级</Badge>}
+        description="窗口 = 上市月与 2026-01 中较晚者 → 最新已公布月份（2026-10）。全部为中国汽车工程学会 Autolink 零售量，柱尾百分比是数据覆盖度。"
+        action={<Badge tone="teal">统一零售口径</Badge>}
       >
         <SalesBarChart
           vehicles={vehicles}

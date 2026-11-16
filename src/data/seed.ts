@@ -331,6 +331,14 @@ const sources = {
     date: SALES_CHECK_DATE,
     publisher: '易车',
   },
+  lynk08Zol: {
+    id: 'src_lynk08_zol',
+    label: 'ZOL：领克08 EM-P 2026款 230超长续航Ultra 参数（20.58 万 / 230km / 4825×1915×1660 / 轴距 2848）',
+    url: 'https://detail.zol.com.cn/2144/2143120/param.shtml',
+    kind: 'media',
+    date: '2026-11-10',
+    publisher: 'ZOL 中关村在线',
+  },
   autolink: {
     id: 'src_autolink',
     label: '中国汽车工程学会车型销量榜（Autolink）：分车型月度零售/批发',
@@ -1128,7 +1136,75 @@ const idt6 = blankVehicle({
   manualScores: manual({ price: 8.3, adas: 7.2, chassis: 8.6, range: 7.8, space: 8.2, cockpit: 7.4, brand: 8.6 }),
 })
 
-const vehicles: Vehicle[] = [t7, mg07, s07, q06, seal, c10, c11, idt6]
+const lynk08 = blankVehicle({
+  id: 'v_lynk08',
+  brand: '领克',
+  model: '08 EM-P',
+  year: '2026款',
+  trim: '230 超长续航 Ultra',
+  bodyType: 'SUV',
+  energyType: '插混',
+  driveType: '前置前驱',
+  focusStatus: '观察中',
+  keyCandidate: false,
+  accent: '#fbbf24',
+  followedAt: '2026-11-10',
+  reason: '20 万级插混 SUV 的配置标杆：230km 纯电、激光雷达、Thor 芯片、哈曼卡顿 23 喇叭，用来对照 Q06/T7 的「同价位能给到什么」。',
+  notes:
+    '2026 款 230 超长续航 Ultra，指导价 20.58 万。1.5T 163 马力 + 前置电机 180kW，3 挡 DHT，CLTC 纯电 230km。电池容量与快充功率官方未在参数页披露，标待核实。',
+  pros: ['CLTC 纯电 230km，插混里纯电续航偏长', '激光雷达 + 英伟达 Thor/Orin-Y（200/700 TOPS）、11 摄像头', '15.4 英寸屏 + 8295 芯片 + 哈曼卡顿 23 喇叭，座舱配置高'],
+  cons: ['插混不是纯电，需加油，与「家充纯电」需求不符', '指导价 20.58 万，落地超 22 万，超出 20 万预算上限', '2026 年零售逐月下滑（1 月 4124 → 10 月 1487）'],
+  tags: ['插混', '激光雷达', '超预算'],
+  specs: specs({
+    basic: {
+      launchDate: '2026-01',
+      saleStatus: '在售',
+      seats: 5,
+      warranty: '待核实',
+      serviceNetwork: '领克中心（覆盖待核实）',
+      residualRate: 45,
+      platform: 'CMA Evo（待核实）',
+    },
+    powertrain: {
+      batteryKwh: null,
+      batteryBrand: '待核实',
+      batteryType: '待核实',
+      cltcRange: 230,
+      powerKw: 180,
+      highVoltage: '待核实',
+      thermalMgmt: '待核实',
+    },
+    body: { length: 4825, width: 1915, height: 1660, wheelbase: 2848 },
+    adas: {
+      solution: '领克自研 + 英伟达 Thor / Orin-Y（激光雷达 1 颗，11 摄像头）',
+      supplier: '英伟达',
+      lidar: 1,
+      lidarSpec: '待核实（线数未公布）',
+      tops: 700,
+      highSpeedNoa: '标配',
+      cityNoa: '待核实',
+      autoPark: '待核实',
+      hardware: '标配',
+      experience: '待试驾',
+    },
+  }),
+  provenance: {
+    'basic.launchDate': p('媒体', sources.lynk08Zol.id, { note: '2026.01 上市' }),
+    'basic.residualRate': p('个人', sources.lynk08Zol.id, { note: '个人估算' }),
+    'powertrain.cltcRange': p('媒体', sources.lynk08Zol.id, { note: 'CLTC 纯电 230km（插混）' }),
+    'powertrain.powerKw': p('媒体', sources.lynk08Zol.id, { note: '电动机总功率 180kW' }),
+    'body.length': p('媒体', sources.lynk08Zol.id),
+    'body.width': p('媒体', sources.lynk08Zol.id),
+    'body.height': p('媒体', sources.lynk08Zol.id),
+    'body.wheelbase': p('媒体', sources.lynk08Zol.id),
+    'adas.lidar': p('媒体', sources.lynk08Zol.id),
+    'adas.tops': p('媒体', sources.lynk08Zol.id, { note: 'Thor 700 TOPS（另有 Orin-Y 200 TOPS 版本）' }),
+  },
+  sources: [sources.lynk08Zol, sources.autolink],
+  manualScores: manual({ price: 6.5, adas: 8.6, chassis: 8.2, range: 7.6, space: 8.4, cockpit: 9.0, brand: 8.0 }),
+})
+
+const vehicles: Vehicle[] = [t7, mg07, s07, q06, seal, c10, c11, idt6, lynk08]
 
 const quotes: PriceQuote[] = [
   {
@@ -1265,6 +1341,33 @@ const quotes: PriceQuote[] = [
     conditions: '700 智尊型指导价 16.99 万，限时权益价 16.59 万（车系权益价 13.59–16.59 万）；天枢领航 Ultra 软硬套装限时 0.99 万（原价 1.2 万）；另有 4000 元换购补贴与 10 万 3 年 0 息，未计入车价。',
     note: '多地经销商另有 0.4 万现金优惠，与厂家权益通常不叠加，需到店确认；12 月政策尚未公布，仅确认「12 月 31 日前购车可免费享一年天枢领航安心包」。',
     createdAt: '2026-11-05T10:00:00+08:00',
+  },
+  {
+    id: 'q_lynk08_20261110',
+    vehicleId: 'v_lynk08',
+    date: '2026-11-10',
+    label: '官方指导价',
+    guidePrice: 205800,
+    officialPrice: 205800,
+    dealerPrice: null,
+    limitedDiscount: 0,
+    cashDiscount: 0,
+    conditionalDiscount: 0,
+    tradeInSubsidy: 0,
+    optionTotal: 0,
+    adasPack: 0,
+    insurance: 7200,
+    plateFee: 500,
+    otherFee: 0,
+    taxOverride: null,
+    includeConditional: false,
+    includeTradeIn: false,
+    status: '媒体',
+    sourceUrl: sources.lynk08Zol.url,
+    sourceLabel: 'ZOL：领克08 EM-P 2026款 230超长续航Ultra',
+    conditions: '指导价 20.58 万；插混车型购置税按 2026–2027 减半口径估算。',
+    note: '插混不免购置税，落地约 22.4 万，超出 20 万预算上限。',
+    createdAt: '2026-11-10T10:00:00+08:00',
   },
   {
     id: 'q_seal_20261028',
@@ -1454,6 +1557,17 @@ const sales: SalesRecord[] = [
   sale('sale_s07_202608', 'v_s07', '2026-08', 1554, '零售', '媒体', sources.autolink, '深蓝 S07 车系零售（BEV+REEV）；8–9 月低谷，10 月改款后回升。'),
   sale('sale_s07_202609', 'v_s07', '2026-09', 1515, '零售', '媒体', sources.autolink, '深蓝 S07 车系零售（BEV+REEV）；8–9 月低谷，10 月改款后回升。'),
   sale('sale_s07_202610', 'v_s07', '2026-10', 4059, '零售', '媒体', sources.autolink, '深蓝 S07 车系零售（BEV+REEV）；8–9 月低谷，10 月改款后回升。'),
+  // 领克 08 EM-P（插混）：2026-01 上市，窗口 2026-01 → 10
+  sale('sale_lynk08_202601', 'v_lynk08', '2026-01', 4124, '零售', '媒体', sources.autolink, '领克 08 EM-P 车系零售；1 月 4124 后逐月下滑，10 月 1487。'),
+  sale('sale_lynk08_202602', 'v_lynk08', '2026-02', 2495, '零售', '媒体', sources.autolink, '领克 08 EM-P 车系零售；1 月 4124 后逐月下滑，10 月 1487。'),
+  sale('sale_lynk08_202603', 'v_lynk08', '2026-03', 2604, '零售', '媒体', sources.autolink, '领克 08 EM-P 车系零售；1 月 4124 后逐月下滑，10 月 1487。'),
+  sale('sale_lynk08_202604', 'v_lynk08', '2026-04', 2407, '零售', '媒体', sources.autolink, '领克 08 EM-P 车系零售；1 月 4124 后逐月下滑，10 月 1487。'),
+  sale('sale_lynk08_202605', 'v_lynk08', '2026-05', 2507, '零售', '媒体', sources.autolink, '领克 08 EM-P 车系零售；1 月 4124 后逐月下滑，10 月 1487。'),
+  sale('sale_lynk08_202606', 'v_lynk08', '2026-06', 2123, '零售', '媒体', sources.autolink, '领克 08 EM-P 车系零售；1 月 4124 后逐月下滑，10 月 1487。'),
+  sale('sale_lynk08_202607', 'v_lynk08', '2026-07', 1829, '零售', '媒体', sources.autolink, '领克 08 EM-P 车系零售；1 月 4124 后逐月下滑，10 月 1487。'),
+  sale('sale_lynk08_202608', 'v_lynk08', '2026-08', 1803, '零售', '媒体', sources.autolink, '领克 08 EM-P 车系零售；1 月 4124 后逐月下滑，10 月 1487。'),
+  sale('sale_lynk08_202609', 'v_lynk08', '2026-09', 1441, '零售', '媒体', sources.autolink, '领克 08 EM-P 车系零售；1 月 4124 后逐月下滑，10 月 1487。'),
+  sale('sale_lynk08_202610', 'v_lynk08', '2026-10', 1487, '零售', '媒体', sources.autolink, '领克 08 EM-P 车系零售；1 月 4124 后逐月下滑，10 月 1487。'),
 ]
 
 

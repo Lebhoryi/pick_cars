@@ -1,0 +1,42 @@
+{
+ "2026-01": {
+  "retail": 4124,
+  "wholesale": 4984
+ },
+ "2026-02": {
+  "retail": 2495,
+  "wholesale": 6552
+ },
+ "2026-03": {
+  "retail": 2604,
+  "wholesale": 5298
+ },
+ "2026-04": {
+  "retail": 2407,
+  "wholesale": 3068
+ },
+ "2026-05": {
+  "retail": 2507,
+  "wholesale": 2729
+ },
+ "2026-06": {
+  "retail": 2123,
+  "wholesale": 2794
+ },
+ "2026-07": {
+  "retail": 1829,
+  "wholesale": 2522
+ },
+ "2026-08": {
+  "retail": 1803,
+  "wholesale": 853
+ },
+ "2026-09": {
+  "retail": 1441,
+  "wholesale": 2154
+ },
+ "2026-10": {
+  "retail": 1487,
+  "wholesale": 3466
+ }
+}

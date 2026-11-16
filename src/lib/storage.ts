@@ -528,6 +528,28 @@ function migrateSeedScores(data: AppData): AppData {
   return changed ? { ...data, vehicles } : data
 }
 
+/**
+ * 销量口径迁移（2026-11-10）：老数据里是盖世/太平洋/官方战报混口径，
+ * 且缺 10 月。若检测到「旧来源标签」，整体换成 seed 里的 Autolink 零售数据。
+ * 用户自己录过（来源不是旧的那几个）就一律不动。
+ */
+const LEGACY_SALES_SOURCES = ['盖世汽车', '太平洋汽车', '深蓝官方', '比亚迪官方', '长安启源官方', '极狐官方', '大众官方', '零跑官方', '名爵官方']
+
+function migrateSalesToAutolink(data: AppData): AppData {
+  if (data.sales.length === 0) return data
+  const seed = seedData()
+  const legacyIds = new Set(seed.sales.map((sale) => sale.vehicleId))
+  const isLegacy = data.sales.some(
+    (sale) =>
+      legacyIds.has(sale.vehicleId) &&
+      LEGACY_SALES_SOURCES.some((label) => sale.sourceLabel.includes(label)),
+  )
+  if (!isLegacy) return data
+  // 保留用户自己加过的（车型不在 seed 里的）记录，其余整体替换
+  const userAdded = data.sales.filter((sale) => !legacyIds.has(sale.vehicleId))
+  return { ...data, sales: [...seed.sales, ...userAdded] }
+}
+
 export interface LoadResult {
   data: AppData
   source: 'storage' | 'seed' | 'recovered'
@@ -560,7 +582,7 @@ export function loadData(): LoadResult {
         warning: `本地数据校验失败，已加载初始数据。原数据已尝试备份。${parsed.errors[0] ?? ''}`,
       }
     }
-    return { data: migrateSeedScores(fillSeedCovers(parsed.data)), source: 'storage' }
+    return { data: migrateSalesToAutolink(migrateSeedScores(fillSeedCovers(parsed.data))), source: 'storage' }
   } catch {
     return { data: seedData(), source: 'recovered', warning: '读取本地数据失败，已加载初始数据。' }
   }
