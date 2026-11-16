@@ -346,7 +346,7 @@ export function OverviewPage() {
           action={<Badge tone="amber">保守口径 · 未计置换</Badge>}
         >
           <div className="space-y-3.5">
-            {sortedByScore.slice(0, 6).map((vehicle) => {
+            {sortedByScore.map((vehicle) => {
               const info = priceMap[vehicle.id]
               const landing = info?.breakdown.landing ?? null
               const guide = info?.quote?.guidePrice ?? null
